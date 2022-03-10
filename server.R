@@ -4,6 +4,7 @@ options(shiny.maxRequestSize=30*1024^2)
 library(gtfstools)
 library(shiny)
 library(leaflet)
+library(leafgl)
 library(shinydashboard)
 library(data.table)
 library(waiter)
@@ -90,9 +91,12 @@ function(input, output, session) {
         #loop through all groups and add a layer one at a time
         for (i in seq_along(k)) {
           map <- map %>% 
-            addPolylines(
+            addGlPolylines(
               data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
             )
+            # addPolylines(
+            #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
+            # )
         }
         
         #create layer control
