@@ -307,12 +307,16 @@ function(input, output, session) {
     
     # shapes_filter <- subset(values$shapes, route_id == values$route_selected)
     shapes_filter <- subset(values$shapes, route_id == input$choose_route)
+    shapes_filter$direction_id <- rleid(shapes_filter$shape_id)
     
     # print(head(shapes_filter))
     
     
     trips_filter <- subset(values$gtfs$trips, route_id == input$choose_route)
     # print(head(trips_filter))
+    stops_filter <- kauetools::extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
+    stops_filter[, direction_id := rleid(shape_id)]
+    
     
     # speeds
     mean_speed <- gtfstools::get_trip_speed(values$gtfs, trip_id = trips_filter$trip_id, file = "shapes")
@@ -323,7 +327,16 @@ function(input, output, session) {
       
       leaflet() %>%
         addTiles() %>%
-        addPolylines(data = shapes_filter)
+        addPolylines(data = subset(shapes_filter, direction_id == 1), group = "Inbound") %>%
+        addPolylines(data = subset(shapes_filter, direction_id == 2), group = "Outbound") %>%
+        addMarkers(data = stops_filter[direction_id == 1], lng = ~stop_lon, lat = ~stop_lat, group = "Inbound",
+                   label = ~htmlEscape(stop_name)) %>%
+        addMarkers(data = stops_filter[direction_id == 2], lng = ~stop_lon, lat = ~stop_lat, group = "Outbound",
+                   label = ~htmlEscape(stop_name)) %>%
+        addLayersControl(
+          overlayGroups = c("Inbound", "Outbound"),
+          options = layersControlOptions(collapsed = FALSE))
+        
       
     )
     
@@ -332,7 +345,8 @@ function(input, output, session) {
         "Velocidade",
         paste0(round(mean_speed), " km/h"),
         icon = icon("user-friends"),
-        color = "black"
+        color = "black",
+        width = 10
       )
       
     })
