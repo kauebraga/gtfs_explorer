@@ -11,7 +11,7 @@ shinyUI(
   div(class = "navbar-default",
       # Load Css
       tags$head(includeCSS("www/styles.css")),
-      tags$style(type = "text/css", "#map_city {height: calc(100vh - 120px) !important;}"),
+      tags$style(type = "text/css", "#map_city, #map_routes {height: calc(100vh - 120px) !important;}"),
       useShinydashboard(),
       # Use loading page
       use_waiter(),
@@ -53,11 +53,13 @@ shinyUI(
                    value = "tab_routes", 
                    fluidRow(
                      column(width = 8,
-                            box(width = NULL, solidHeader = TRUE,
-                                # # selecionar linha
-                                uiOutput("route_choice"),
+                            box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # Output map
-                                leafletOutput("map_routes")),
+                                leafletOutput("map_routes"))),
+                     column(width = 4,
+                            box(width = NULL, height = NULL, solidHeader = TRUE,
+                                # # selecionar linha
+                                uiOutput("route_choice")),
                             box(width = NULL, solidHeader = TRUE,
                                 infoBoxOutput("speed_infobox"))
                      )

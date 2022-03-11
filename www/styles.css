@@ -2,6 +2,10 @@
 @import url("//fonts.googleapis.com/css?family=Roboto|Roboto+Condensed:400,700");
 @import url("//fonts.googleapis.com/css?family=Lobster");
 
+#choose_route {
+  z-index: 999999;
+}
+
 .row {
   margin-top: 70px;
   

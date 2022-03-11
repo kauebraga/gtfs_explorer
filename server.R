@@ -9,6 +9,8 @@ library(shinydashboard)
 library(data.table)
 library(waiter)
 library(highcharter)
+library(kauetools)
+library(htmltools)
 
 
 function(input, output, session) {
@@ -70,7 +72,7 @@ function(input, output, session) {
     
     removeModal()
     # ok
-    waiter_show(html = tagList(spin_loaders(color = "black"), br(), span("Opening GTFS...", style = "color: black")),
+    waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Opening GTFS...", style = "color: black")),
                 color = "rgba(233, 235, 240, .5)")
     
     # w$update(html = tagList(spin_fading_circles(), br(), "Opening GTFS.."))
@@ -89,7 +91,7 @@ function(input, output, session) {
       
     }
     
-    w$update(html = tagList(spin_loaders(color = "black"), br(), span("Calculating indicators...", style = "color: black")))
+    w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
     
     values$gtfs <- gtfs1
     shapes <- gtfstools::convert_shapes_to_sf(gtfs1)
@@ -171,10 +173,11 @@ function(input, output, session) {
         #loop through all groups and add a layer one at a time
         for (i in seq_along(k)) {
           map <- map %>% 
-            addPolylines(
+            addGlPolylines(
               data = subset(shapes, route_type == k[[i]]), 
               group = as.character(df[sigla == k[[i]]]$text),
-              layerId = ~route_id
+              color = "black"
+              # layerId = ~route_id
             )
           # addPolylines(
           #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
@@ -255,7 +258,7 @@ function(input, output, session) {
       if(count() == 1) {
         
         
-        waiter_show(html = tagList(spin_loaders(color = "black"), br(), span("Calculating...", style = "color: black")),
+        waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Calculating...", style = "color: black")),
                     color = "rgba(233, 235, 240, .5)")
         
         
@@ -284,9 +287,12 @@ function(input, output, session) {
   output$route_choice <- renderUI({
     
     pickerInput(inputId = "choose_route",
-                label = "Choose route",
+                label = "Choose a route",
                 choices = unique(values$stop_times$route_id),
-                selected = "075")
+                selected = "075",
+                options = pickerOptions(
+                  liveSearch = TRUE
+                ))
     
   })
   
