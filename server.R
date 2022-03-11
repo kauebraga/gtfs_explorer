@@ -121,6 +121,10 @@ function(input, output, session) {
     # bind
     trips_days <- rbind(trips_workday, trips_saturday, trips_sunday)
     
+    values$trips_workday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trip_id)]
+    values$trips_saturday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trip_id)]
+    values$trips_sunday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trip_id)]
+    
     output$graph_trips_by_service <- renderHighchart({
       
       
@@ -284,6 +288,16 @@ function(input, output, session) {
     
   })
   
+  output$service_choice <- renderUI({
+    
+    pickerInput(inputId = "choose_service",
+                label = "Choose a service",
+                choices = c("Weekday", "Saturday", "Sunday"),
+                selected = "Weekday"
+                )
+    
+  })
+  
   output$route_choice <- renderUI({
     
     pickerInput(inputId = "choose_route",
@@ -296,7 +310,7 @@ function(input, output, session) {
     
   })
   
-  observeEvent(c(input$choose_route), {
+  observeEvent(c(input$choose_route, input$choose_service), {
     
     # output$table_routes <- renderTable(
     #   
@@ -317,9 +331,23 @@ function(input, output, session) {
     
     # print(head(shapes_filter))
     
+    # filter service
+    service_to_filter <- if(input$choose_service == "Weekday") {
+      values$trips_workday$trip_id 
+      } else if (input$choose_service == "Saturday") {
+      
+        values$trips_saturday$trip_id 
+        
+    } else if (input$choose_service == "Sunday") {
+      
+      values$trips_sunday$trip_id
+    }
     
-    trips_filter <- subset(values$gtfs$trips, route_id == input$choose_route)
-    # print(head(trips_filter))
+    trips_filter <- subset(values$gtfs$trips, trip_id %in% service_to_filter)
+    # filter route
+    trips_filter <- subset(trips_filter, route_id == input$choose_route)
+    
+    # stops
     stops_filter <- kauetools::extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
     stops_filter[, direction_id := rleid(shape_id)]
     

@@ -59,6 +59,7 @@ shinyUI(
                      column(width = 4,
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # # selecionar linha
+                                uiOutput("service_choice"),
                                 uiOutput("route_choice")),
                             box(width = NULL, solidHeader = TRUE,
                                 infoBoxOutput("speed_infobox"))
