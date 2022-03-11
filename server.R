@@ -13,6 +13,8 @@ library(highcharter)
 
 function(input, output, session) {
   
+  values <- reactiveValues(gtfs = NULL, stop_times = NULL, modal_closed = FALSE,
+                           route_selected = NULL)
   
   # 1) modal to upload gtfs at startup ----------------------------------------------------------
   query_modal <- div(id = "modal_lang", 
@@ -27,13 +29,15 @@ function(input, output, session) {
                                accept = c(".zip")),
                          )
                        }),
-                       easyClose = TRUE,
+                       easyClose = FALSE,
                        size = "m",
-                       footer = div(id = "openDetails", class = "btn btn-default action-button shiny-bound-input",
-                                    tagList(
-                                      modalButton(icon("check"))
-                                    )
-                       )
+                       footer = NULL
+                       # footer = actionButton("dismiss_modal",label = "Dismiss")
+                       # footer = div(id = "openDetails", class = "btn btn-default action-button shiny-bound-input",
+                       #              tagList(
+                       #                modalButton(icon("check"))
+                       #              )
+                       # )
                        
                      )
   ) 
@@ -41,13 +45,36 @@ function(input, output, session) {
   # Show the model on start up ...
   showModal(query_modal)
   
-  values <- reactiveValues(gtfs = NULL, stop_times = NULL)
+  # ok 
+  w <- Waiter$new(
+    # html = span("Loading..."),
+    # html = spin_loader(),
+    # color = transparent(.7)
+  )
+  # w <- Waiter$new(id = c('map_city', "graph_trips_by_service", "map_routes"),
+  #                        html = spin_loader(), color = "##F4F6F6")
+  
+  # observeEvent(input$dismiss_modal, {
+  #   
+  #   values$modal_closed <- T
+  #   waiter_show(html = spin_loader(), color = "##F4F6F6")
+  #   removeModal()
+  #   
+  # })
+  
   
   observeEvent(input$gtfs, {
     
-    # waiter_show(html = spin_loader(), color = "##F4F6F6")
     
     req(input$gtfs)
+    
+    removeModal()
+    # ok
+    waiter_show(html = tagList(spin_loaders(color = "black"), br(), span("Opening GTFS...", style = "color: black")),
+                color = "rgba(233, 235, 240, .5)")
+    
+    # w$update(html = tagList(spin_fading_circles(), br(), "Opening GTFS.."))
+    
     
     if (input$gtfs$datapath == 1) {
       
@@ -62,68 +89,16 @@ function(input, output, session) {
       
     }
     
+    w$update(html = tagList(spin_loaders(color = "black"), br(), span("Calculating indicators...", style = "color: black")))
+    
     values$gtfs <- gtfs1
     shapes <- gtfstools::convert_shapes_to_sf(gtfs1)
+    # shapes <- sf::st_simplify(shapes)
     # bring route to the shapes
     shapes <- merge(shapes, unique(gtfs1$trips, by = c("route_id", "shape_id")))
     shapes <- merge(shapes, gtfs1$routes[, .(route_id, route_long_name, route_type)])
     shapes <- sf::st_sf(shapes)
     values$shapes <- shapes
-    
-    
-    # TODO: by route type
-    output$map_city <- renderLeaflet({
-      
-      
-      map_layers <- function() {
-        
-        
-        # get route types
-        k <- unique(shapes$route_type)
-        
-        df <- data.table(sigla = 0:3,
-                         text = c("LRT", "Subway", "Rail", "Bus"))
-        
-        #base map
-        map <- leaflet() %>%
-          addProviderTiles(providers$CartoDB.Positron)
-        
-        #loop through all groups and add a layer one at a time
-        for (i in seq_along(k)) {
-          map <- map %>% 
-            addGlPolylines(
-              data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
-            )
-            # addPolylines(
-            #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
-            # )
-        }
-        
-        #create layer control
-        map %>% 
-          addLayersControl(
-            overlayGroups = df[sigla %in% k]$text,
-            options = layersControlOptions(collapsed = FALSE))
-        # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
-        
-      }
-      
-      #plot the map
-      map_layers()
-      
-      # # Stop the loading page here !
-      # waiter_hide()
-      
-      
-      # leaflet() %>%
-      #   addTiles() %>%
-      #   addPolylines(data = values$shapes, group = "Linha") %>%
-      #   addLayersControl(overlayGroups = c("Linha"),
-      #                    options = layersControlOptions(collapsed = FALSE))
-      
-      
-    })
-    
     
     # boxes:
     # number of trips by service_id
@@ -175,44 +150,134 @@ function(input, output, session) {
         ))
     })
     
+    
+    # TODO: by route type
+    output$map_city <- renderLeaflet({
+      
+      
+      map_layers <- function() {
+        
+        
+        # get route types
+        k <- unique(shapes$route_type)
+        
+        df <- data.table(sigla = 0:3,
+                         text = c("LRT", "Subway", "Rail", "Bus"))
+        
+        #base map
+        map <- leaflet() %>%
+          addProviderTiles(providers$CartoDB.Positron)
+        
+        #loop through all groups and add a layer one at a time
+        for (i in seq_along(k)) {
+          map <- map %>% 
+            addPolylines(
+              data = subset(shapes, route_type == k[[i]]), 
+              group = as.character(df[sigla == k[[i]]]$text),
+              layerId = ~route_id
+            )
+          # addPolylines(
+          #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
+          # )
+        }
+        
+        #create layer control
+        map %>% 
+          addLayersControl(
+            overlayGroups = df[sigla %in% k]$text,
+            options = layersControlOptions(collapsed = FALSE))
+        # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
+        
+      }
+      
+      #plot the map
+      map_layers()
+      
+      # # Stop the loading page here !
+      # waiter_hide_on_render()
+      
+      
+      # leaflet() %>%
+      #   addTiles() %>%
+      #   addPolylines(data = values$shapes, group = "Linha") %>%
+      #   addLayersControl(overlayGroups = c("Linha"),
+      #                    options = layersControlOptions(collapsed = FALSE))
+      
+      
+    })
+    
+    # waiter_hide()
+    
+    
+    
     # routes by type
     route_by_type <- values$gtfs$routes[, .N, by = route_type]
     
     
-    output$speed_infobox <- renderInfoBox({
-      infoBox(
-        "Velocidade",
-        paste0(round(mean_speed), " km/h"),
-        icon = icon("user-friends"),
-        color = "black"
-      )
-      
-    })
+    # output$speed_infobox <- renderInfoBox({
+    #   infoBox(
+    #     "Velocidade",
+    #     paste0(round(mean_speed), " km/h"),
+    #     icon = icon("user-friends"),
+    #     color = "black"
+    #   )
+    #   
+    # })
     
+    
+    # click event
+    # click event
+    
+  })
+  
+  # click event
+  observeEvent(input$map_city_shape_click, {
+    # click event
+    click <- input$map_city_shape_click
+    print(click) # this returns NULL if a polygone is clicked for the second time
+    
+    values$route_selected <- click$id
     
   })
   
   
   
+  # count to know how many times tab was clicked
+  count <- reactiveVal(0)
   
   
   observeEvent(input$tabs, {
     
     if (input$tabs == "tab_routes") {
       
-      # print(paste("You clicked tab:", input$tabs))
+      count(count()+1)
       
-      # print(input$gtfs$datapath)
+      if(count() == 1) {
+        
+        
+        waiter_show(html = tagList(spin_loaders(color = "black"), br(), span("Calculating...", style = "color: black")),
+                    color = "rgba(233, 235, 240, .5)")
+        
+        
+        # print(paste("You clicked tab:", input$tabs))
+        
+        # print(input$gtfs$datapath)
+        
+        print("loading st")
+        
+        stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
+                                           files = "stop_times")$stop_times
+        # bring routes
+        stop_times <- merge(stop_times, values$gtfs$trips[, .(trip_id, route_id, shape_id, direction_id)],
+                            sort = FALSE)
+        
+        values$stop_times <- stop_times
+      }
       
-      stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
-                                         files = "stop_times")$stop_times
-      # bring routes
-      stop_times <- merge(stop_times, values$gtfs$trips[, .(trip_id, route_id, shape_id, direction_id)],
-                          sort = FALSE)
-      
-      values$stop_times <- stop_times
       
     }
+    
+    print(count())
     
   })
   
@@ -225,7 +290,7 @@ function(input, output, session) {
     
   })
   
-  observeEvent(input$choose_route, {
+  observeEvent(c(input$choose_route), {
     
     # output$table_routes <- renderTable(
     #   
@@ -233,22 +298,26 @@ function(input, output, session) {
     #   
     # )
     
+    
+    
     values$gtfs$stop_times <- values$stop_times
     
-    print(head(values$gtfs$stop_times))
+    # print(head(values$gtfs$stop_times))
     
+    
+    # shapes_filter <- subset(values$shapes, route_id == values$route_selected)
     shapes_filter <- subset(values$shapes, route_id == input$choose_route)
     
-    print(head(shapes_filter))
+    # print(head(shapes_filter))
     
     
     trips_filter <- subset(values$gtfs$trips, route_id == input$choose_route)
-    print(head(trips_filter))
+    # print(head(trips_filter))
     
     # speeds
     mean_speed <- gtfstools::get_trip_speed(values$gtfs, trip_id = trips_filter$trip_id, file = "shapes")
     mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
-    print(mean_speed)
+    # print(mean_speed)
     
     output$map_routes <- renderLeaflet(
       
@@ -267,6 +336,8 @@ function(input, output, session) {
       )
       
     })
+    
+    w$hide()
     
   })
   

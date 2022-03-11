@@ -11,22 +11,28 @@ shinyUI(
   div(class = "navbar-default",
       # Load Css
       tags$head(includeCSS("www/styles.css")),
+      tags$style(type = "text/css", "#map_city {height: calc(100vh - 120px) !important;}"),
       useShinydashboard(),
       # Use loading page
-      # use_waiter(),
+      use_waiter(),
       # Start navbar page
       navbarPage("GTFS Explorer", id = "tabs",
                  # Map page
                  tabPanel(
                    # title = uiOutput('title_map'), 
+                   # autoWaiter(),
+                   # waiterOnBusy(),
+                   # waiterPreloader(),
+                   waiter_hide_on_render("map_city"),
                    title = "Mapa", 
                    value = "tab_general",
                    fluidRow(
                      column(width = 8, 
-                            box(width = NULL, status = "primary", collapsible = FALSE,
-                                leafletOutput("map_city", height = "calc(100vh - 450px)")),
+                            box(width = NULL, height = NULL, solidHeader = TRUE,
+                                leafletOutput("map_city"))),
+                     column(width = 4, 
                             box(width = NULL, solidHeader = TRUE,
-                              highchartOutput("graph_trips_by_service", height = "250px")))
+                                highchartOutput("graph_trips_by_service", height = "250px")))
                      # absolutePanel(id = "controls_graphs1", class = "panel panel-default", 
                      #               fixed = TRUE, draggable = FALSE,
                      #               top = 80, left = 80, height = "100%", width = "70%",
@@ -45,24 +51,25 @@ shinyUI(
                    # title = uiOutput('title_map'), 
                    title = "Rotas", 
                    value = "tab_routes", 
-                   absolutePanel(id = "map_routes", class = "panel panel-default", 
-                                 fixed = TRUE, draggable = FALSE,
-                                 top = 80, left = 80, height = "100%", width = "70%",
-                                 # # selecionar linha
-                                 uiOutput("route_choice"),
-                                 # Output map
-                                 leafletOutput("map_routes"),
-                                 infoBoxOutput("speed_infobox")
-                   )
-                   # tableOutput("table_routes")
-                   # # Create the side panel  
-                   # absolutePanel(id = "controls", class = "panel panel-default", 
-                   #               fixed = TRUE, draggable = FALSE,
-                   #               top = 60, right = 10, width = 350, height = 550,
-                   #               # Output the 'UI' that was generated in the server
-                   #               uiOutput('page_content')
-                   # )
-                 )
+                   fluidRow(
+                     column(width = 8,
+                            box(width = NULL, solidHeader = TRUE,
+                                # # selecionar linha
+                                uiOutput("route_choice"),
+                                # Output map
+                                leafletOutput("map_routes")),
+                            box(width = NULL, solidHeader = TRUE,
+                                infoBoxOutput("speed_infobox"))
+                     )
+                     # tableOutput("table_routes")
+                     # # Create the side panel  
+                     # absolutePanel(id = "controls", class = "panel panel-default", 
+                     #               fixed = TRUE, draggable = FALSE,
+                     #               top = 60, right = 10, width = 350, height = 550,
+                     #               # Output the 'UI' that was generated in the server
+                     #               uiOutput('page_content')
+                     # )
+                   ))
                  # # Graphs page
                  # tabPanel(id = "tab_routes", title = uiOutput('title_graph'),
                  #          # Create the side panel
