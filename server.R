@@ -98,7 +98,7 @@ function(input, output, session) {
     # shapes <- sf::st_simplify(shapes)
     # bring route to the shapes
     shapes <- merge(shapes, unique(gtfs1$trips, by = c("route_id", "shape_id")))
-    shapes <- merge(shapes, gtfs1$routes[, .(route_id, route_long_name, route_type)])
+    shapes <- merge(shapes, gtfs1$routes[, .(route_id, route_short_name, route_long_name, route_type)])
     shapes <- sf::st_sf(shapes)
     values$shapes <- shapes
     
@@ -288,22 +288,67 @@ function(input, output, session) {
     
   })
   
+  
+  
+  
+  
   output$service_choice <- renderUI({
     
     pickerInput(inputId = "choose_service",
                 label = "Choose a service",
                 choices = c("Weekday", "Saturday", "Sunday"),
                 selected = "Weekday"
-                )
+    )
     
   })
   
   output$route_choice <- renderUI({
+      
+    
+    # create lists with routes names and types --------------------------------
+    
+    # list available route_types
+    route_types_available <- sort(unique(values$shapes$route_type))
+    
+    a <- function(route_type1) {
+      
+      
+      # get route type name
+      route_type_name <- fcase(
+        route_type1 == 0, "LRT",
+        route_type1 == 1, "Subway", 
+        route_type1 == 2, "Rail", 
+        route_type1 == 3,"Bus"
+      )
+      
+      # list all routes from that type
+      routes <- subset(values$shapes, route_type == route_type1)
+      routes <- sf::st_set_geometry(routes, NULL)
+      routes <- setDT(routes)
+      # get unique routes
+      routes <- unique(routes, by = c("route_id"))
+      # modify long name
+      routes[, route_name := paste0(route_long_name)]
+      # routes[, route_name := paste0(route_short_name)]
+      # routes[, route_name := paste0(route_short_name, " - ", route_long_name)]
+      
+      
+      # compose names that will be on the pickerinput
+      list_routes <- list(structure(routes$route_id, .Names = routes$route_name))
+      # define name
+      names(list_routes) <- route_type_name
+      
+      return(list_routes)
+      
+    }
+    
+    routes_choices <- lapply(unique(route_types_available), a)
+    routes_choices <- do.call(c, routes_choices)
     
     pickerInput(inputId = "choose_route",
                 label = "Choose a route",
-                choices = unique(values$stop_times$route_id),
-                selected = "075",
+                choices = routes_choices,
+                # selected = "075",
                 options = pickerOptions(
                   liveSearch = TRUE
                 ))
@@ -334,10 +379,10 @@ function(input, output, session) {
     # filter service
     service_to_filter <- if(input$choose_service == "Weekday") {
       values$trips_workday$trip_id 
-      } else if (input$choose_service == "Saturday") {
+    } else if (input$choose_service == "Saturday") {
       
-        values$trips_saturday$trip_id 
-        
+      values$trips_saturday$trip_id 
+      
     } else if (input$choose_service == "Sunday") {
       
       values$trips_sunday$trip_id
@@ -370,7 +415,7 @@ function(input, output, session) {
         addLayersControl(
           overlayGroups = c("Inbound", "Outbound"),
           options = layersControlOptions(collapsed = FALSE))
-        
+      
       
     )
     
