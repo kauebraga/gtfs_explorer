@@ -77,8 +77,9 @@ function(input, output, session) {
     
     # w$update(html = tagList(spin_fading_circles(), br(), "Opening GTFS.."))
     
+    print(length(input$gtfs$datapath))
     
-    if (input$gtfs$datapath == 1) {
+    if (length(input$gtfs$datapath) == 1) {
       
       
       gtfs1 <- gtfstools::read_gtfs(input$gtfs$datapath,
@@ -90,6 +91,21 @@ function(input, output, session) {
       gtfs1 <- do.call(gtfstools::merge_gtfs, gtfs1)
       
     }
+    
+    print(input$gtfs$name)
+    
+    # # upload gtfs locally
+    # gtfstools::write_gtfs(
+    #   gtfs1,
+    #   path = file.path("data_teste", paste0(basename(input$gtfs$name), "-", gsub(" ", "_", Sys.time())))
+    # )
+    
+    # upload gtfs locally
+    data_upload <- data.table(gtfs = input$gtfs$name, time = Sys.time())
+    fwrite(data_upload,
+      file = "data_teste/gtfs_uploads.csv",
+      append = TRUE
+    )
     
     w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
     
