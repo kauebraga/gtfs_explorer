@@ -52,17 +52,21 @@ shinyUI(
                    title = "Rotas", 
                    value = "tab_routes", 
                    fluidRow(
-                     column(width = 8,
+                     column(width = 7,
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # Output map
                                 leafletOutput("map_routes"))),
-                     column(width = 4,
+                     column(width = 5,
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # # selecionar linha
                                 uiOutput("service_choice"),
                                 uiOutput("route_choice")),
                             box(width = NULL, solidHeader = TRUE,
-                                infoBoxOutput("speed_infobox"))
+                                infoBoxOutput("speed_infobox")
+                            ),
+                            box(width = NULL, solidHeader = TRUE,
+                                highchartOutput("graph_frequency", height = "300px")
+                            )
                      )
                      # tableOutput("table_routes")
                      # # Create the side panel  

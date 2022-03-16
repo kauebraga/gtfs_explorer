@@ -1,6 +1,8 @@
 # increase max upload size to 30mb
 options(shiny.maxRequestSize=30*1024^2)
 
+source(dir("fun", full.names = TRUE))
+
 library(gtfstools)
 library(shiny)
 library(leaflet)
@@ -9,7 +11,7 @@ library(shinydashboard)
 library(data.table)
 library(waiter)
 library(highcharter)
-library(kauetools)
+# library(kauetools)
 library(htmltools)
 
 
@@ -28,7 +30,7 @@ function(input, output, session) {
                                inputId = "gtfs", 
                                label = "Choose CSV File",
                                multiple = TRUE,
-                               accept = c(".zip")),
+                               accept = c(".zip"))
                          )
                        }),
                        easyClose = FALSE,
@@ -103,8 +105,8 @@ function(input, output, session) {
     # upload gtfs locally
     data_upload <- data.table(gtfs = input$gtfs$name, time = Sys.time())
     fwrite(data_upload,
-      file = "data_teste/gtfs_uploads.csv",
-      append = TRUE
+           file = "data_teste/gtfs_uploads.csv",
+           append = TRUE
     )
     
     w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
@@ -173,7 +175,6 @@ function(input, output, session) {
     })
     
     
-    # TODO: by route type
     output$map_city <- renderLeaflet({
       
       
@@ -185,6 +186,7 @@ function(input, output, session) {
         
         df <- data.table(sigla = 0:3,
                          text = c("LRT", "Subway", "Rail", "Bus"))
+        
         
         #base map
         map <- leaflet() %>%
@@ -291,7 +293,7 @@ function(input, output, session) {
         stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
                                            files = "stop_times")$stop_times
         # bring routes
-        stop_times <- merge(stop_times, values$gtfs$trips[, .(trip_id, route_id, shape_id, direction_id)],
+        stop_times <- merge(stop_times, values$gtfs$trips[, .(service_id, trip_id, route_id, shape_id, direction_id)],
                             sort = FALSE)
         
         values$stop_times <- stop_times
@@ -319,7 +321,7 @@ function(input, output, session) {
   })
   
   output$route_choice <- renderUI({
-      
+    
     
     # create lists with routes names and types --------------------------------
     
@@ -371,6 +373,8 @@ function(input, output, session) {
     
   })
   
+  
+  
   observeEvent(c(input$choose_route, input$choose_service), {
     
     # output$table_routes <- renderTable(
@@ -383,7 +387,7 @@ function(input, output, session) {
     
     values$gtfs$stop_times <- values$stop_times
     
-    # print(head(values$gtfs$stop_times))
+    # print(names(values$gtfs))
     
     
     # shapes_filter <- subset(values$shapes, route_id == values$route_selected)
@@ -418,32 +422,116 @@ function(input, output, session) {
     mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
     # print(mean_speed)
     
-    output$map_routes <- renderLeaflet(
+    print(input$choose_route)
+    print(service_to_filter)
+    
+    # frequency
+    mean_frequency <- calculate_route_frequency(gtfs = values$gtfs,
+                                                route_id = input$choose_route,
+                                                trip_id = service_to_filter,
+                                                start_time = "05:00:00",
+                                                end_time = "21:00:00",
+                                                mean_headway = TRUE)
+    
+    
+    # mean_frequency_inbound <- mean_frequency$headway_mean[1]
+    # mean_frequency_outbound <- mean_frequency$headway_mean[2]
+    
+    
+    
+    icons <- awesomeIcons(
+      icon = "bus",
+      library = "fa",
+      iconrColor = 'black',
+      iconRotate = 10)
+    
+    
+    output$map_routes <- renderLeaflet({
+      
+      
       
       leaflet() %>%
         addTiles() %>%
+        addAwesomeMarkers(data = stops_filter[direction_id == 1], 
+                          lng = ~stop_lon, lat = ~stop_lat, 
+                          group = "Inbound",
+                          label = ~htmlEscape(stop_name),
+                          icon = icons) %>%
+        addAwesomeMarkers(data = stops_filter[direction_id == 2], 
+                          lng = ~stop_lon, lat = ~stop_lat, 
+                          group = "Outbound",
+                          label = ~htmlEscape(stop_name), 
+                          icon = icons) %>%
         addPolylines(data = subset(shapes_filter, direction_id == 1), group = "Inbound") %>%
         addPolylines(data = subset(shapes_filter, direction_id == 2), group = "Outbound") %>%
-        addMarkers(data = stops_filter[direction_id == 1], lng = ~stop_lon, lat = ~stop_lat, group = "Inbound",
-                   label = ~htmlEscape(stop_name)) %>%
-        addMarkers(data = stops_filter[direction_id == 2], lng = ~stop_lon, lat = ~stop_lat, group = "Outbound",
-                   label = ~htmlEscape(stop_name)) %>%
         addLayersControl(
           overlayGroups = c("Inbound", "Outbound"),
-          options = layersControlOptions(collapsed = FALSE))
+          options = layersControlOptions(collapsed = FALSE)) %>%
+        addMiniMap()
       
       
-    )
+    })
     
     output$speed_infobox <- renderInfoBox({
       infoBox(
         "Velocidade",
         paste0(round(mean_speed), " km/h"),
         icon = icon("user-friends"),
-        color = "black",
-        width = 10
+        color = "black"
+        # width = 12
       )
       
+    })
+    
+    output$frequency_infobox <- renderInfoBox({
+      infoBox(
+        "Frequência",
+        paste0(round(c(mean_frequency_inbound)), " minutos"),
+        icon = icon("user-friends"),
+        color = "black",
+        width = 12
+      )
+      
+    })
+    
+    output$graph_frequency <- renderHighchart({
+      
+      
+      hchart(mean_frequency[[2]], "column", hcaes(y = headway_mean, x = hour, group = shape_id)
+             # dataLabels = list(enabled = TRUE, format='{point.headway_mean}')
+      ) %>%
+        hc_xAxis(
+          title = list(text = "Hour"),
+          type = "category",
+          allowDecimals =  FALSE,
+          labels =
+            list(enabled = TRUE,
+                 format = "{value}h",
+                 # labels every 15 days
+                 step = 1
+            )
+          #   labels = list(useHTML = TRUE,
+          #                 style = list(width = '100px')))%>%
+        ) %>%
+        hc_yAxis(labels = list(enabled = TRUE),
+                 title = list(text = "Minutes"),
+                 tickLength = 0,
+                 gridLineWidth = 1) %>%
+        hc_title(
+          text = "Headway by hour (minutes)"
+        ) %>%
+        hc_chart(style = list(fontFamily = "Roboto Condensed")) %>%
+        hc_plotOptions(column = list(borderRadius = 1,
+                                     borderColor = "#000000",
+                                     # color = "#F4F4F4",
+                                     tooltip = list(
+                                       pointFormat = sprintf("%s: {point.y} mins", "Headway"),
+                                       valueDecimals = 0),
+                                     # stacking = FALSE,
+                                     allowPointSelect = TRUE
+                                     
+                                     
+        ))
     })
     
     w$hide()
