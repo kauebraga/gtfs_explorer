@@ -1,22 +1,8 @@
-# increase max upload size to 30mb
-options(shiny.maxRequestSize=30*1024^2)
-
-source(dir("fun", full.names = TRUE))
-
-library(gtfstools)
-library(shiny)
-library(leaflet)
-library(leafgl)
-library(shinydashboard)
-library(data.table)
-library(waiter)
-library(highcharter)
-# library(kauetools)
-library(htmltools)
 
 
 function(input, output, session) {
   
+  # set reactive values
   values <- reactiveValues(gtfs = NULL, stop_times = NULL, modal_closed = FALSE,
                            route_selected = NULL)
   
@@ -65,6 +51,10 @@ function(input, output, session) {
   #   removeModal()
   #   
   # })
+  
+  
+  
+  # 2) open gtfs and calculate map ------------------------------------------
   
   
   observeEvent(input$gtfs, {
@@ -218,15 +208,6 @@ function(input, output, session) {
       #plot the map
       map_layers()
       
-      # # Stop the loading page here !
-      # waiter_hide_on_render()
-      
-      
-      # leaflet() %>%
-      #   addTiles() %>%
-      #   addPolylines(data = values$shapes, group = "Linha") %>%
-      #   addLayersControl(overlayGroups = c("Linha"),
-      #                    options = layersControlOptions(collapsed = FALSE))
       
       
     })
@@ -250,10 +231,11 @@ function(input, output, session) {
     # })
     
     
-    # click event
-    # click event
     
   })
+  
+  
+  
   
   # click event
   observeEvent(input$map_city_shape_click, {
@@ -271,12 +253,18 @@ function(input, output, session) {
   count <- reactiveVal(0)
   
   
+  
+  # 3) routes tab -----------------------------------------------------------
+  
+  
   observeEvent(input$tabs, {
     
     if (input$tabs == "tab_routes") {
       
+      # count to know how many times tab was clicked
       count(count()+1)
       
+      # open gtfs only on the first time the tab is open
       if(count() == 1) {
         
         
@@ -285,8 +273,6 @@ function(input, output, session) {
         
         
         # print(paste("You clicked tab:", input$tabs))
-        
-        # print(input$gtfs$datapath)
         
         print("loading st")
         
@@ -302,7 +288,6 @@ function(input, output, session) {
       
     }
     
-    print(count())
     
   })
   
@@ -375,26 +360,19 @@ function(input, output, session) {
   
   
   
+  
   observeEvent(c(input$choose_route, input$choose_service), {
     
-    # output$table_routes <- renderTable(
-    #   
-    #   head(values$stop_times[trip_id == input$choose_route])
-    #   
-    # )
     
-    
-    
+    # get gtfs
     values$gtfs$stop_times <- values$stop_times
     
     # print(names(values$gtfs))
     
     
-    # shapes_filter <- subset(values$shapes, route_id == values$route_selected)
+    # filter shapes
     shapes_filter <- subset(values$shapes, route_id == input$choose_route)
     shapes_filter$direction_id <- rleid(shapes_filter$shape_id)
-    
-    # print(head(shapes_filter))
     
     # filter service
     service_to_filter <- if(input$choose_service == "Weekday") {
@@ -408,24 +386,23 @@ function(input, output, session) {
       values$trips_sunday$trip_id
     }
     
+    # filter service
     trips_filter <- subset(values$gtfs$trips, trip_id %in% service_to_filter)
     # filter route
     trips_filter <- subset(trips_filter, route_id == input$choose_route)
     
-    # stops
+    # calculate stops for each route
     stops_filter <- kauetools::extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
     stops_filter[, direction_id := rleid(shape_id)]
     
     
-    # speeds
+    # calculate speeds
     mean_speed <- gtfstools::get_trip_speed(values$gtfs, trip_id = trips_filter$trip_id, file = "shapes")
     mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
     # print(mean_speed)
     
-    print(input$choose_route)
-    print(service_to_filter)
     
-    # frequency
+    # calculate frequency
     mean_frequency <- calculate_route_frequency(gtfs = values$gtfs,
                                                 route_id = input$choose_route,
                                                 trip_id = service_to_filter,
@@ -434,15 +411,12 @@ function(input, output, session) {
                                                 mean_headway = TRUE)
     
     
-    # mean_frequency_inbound <- mean_frequency$headway_mean[1]
-    # mean_frequency_outbound <- mean_frequency$headway_mean[2]
-    
     
     
     icons <- awesomeIcons(
       icon = "bus",
       library = "fa",
-      iconrColor = 'black',
+      # iconrColor = 'black',
       iconRotate = 10)
     
     
@@ -506,8 +480,9 @@ function(input, output, session) {
           allowDecimals =  FALSE,
           labels =
             list(enabled = TRUE,
+                 # put an 'h' after the our
                  format = "{value}h",
-                 # labels every 15 days
+                 # labels every 1  hour
                  step = 1
             )
           #   labels = list(useHTML = TRUE,
@@ -534,6 +509,7 @@ function(input, output, session) {
         ))
     })
     
+    # stop the waiter once all calculations are finished
     w$hide()
     
   })

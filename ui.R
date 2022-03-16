@@ -1,9 +1,3 @@
-library(shiny)
-library(leaflet)
-library(waiter)
-library(shinyWidgets)
-library(shinydashboard)
-library(highcharter)
 
 
 shinyUI(
