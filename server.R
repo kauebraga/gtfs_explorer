@@ -93,11 +93,11 @@ function(input, output, session) {
     # )
     
     # upload gtfs locally
-    data_upload <- data.table(gtfs = input$gtfs$name, time = Sys.time())
-    fwrite(data_upload,
-           file = "data_teste/gtfs_uploads.csv",
-           append = TRUE
-    )
+    # data_upload <- data.table(gtfs = input$gtfs$name, time = Sys.time())
+    # fwrite(data_upload,
+    #        file = "data_teste/gtfs_uploads.csv",
+    #        append = TRUE
+    # )
     
     w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
     
