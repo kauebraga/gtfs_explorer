@@ -458,7 +458,7 @@ function(input, output, session) {
     trips_filter <- subset(trips_filter, route_id == input$choose_route)
     
     # calculate stops for each route
-    stops_filter <- kauetools::extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
+    stops_filter <- extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
     stops_filter[, direction_id := rleid(shape_id)]
     
     # calculate number of stops

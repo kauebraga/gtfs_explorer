@@ -1,7 +1,7 @@
 # increase max upload size to 30mb
 options(shiny.maxRequestSize=30*1024^2)
 
-source(dir("fun", full.names = TRUE))
+lapply(dir("fun", full.names = TRUE), source)
 lapply(dir("R", full.names = TRUE), source)
 
 library(gtfstools)
