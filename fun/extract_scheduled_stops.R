@@ -2,14 +2,13 @@ extract_scheduled_stops <- function (gtfs, service_id = NULL, route_id = NULL)
 {
   env <- environment()
   trips <- gtfs$trips
-  trips <- if (!is.null(route_id)) 
-    trips[route_id %in% get("route_id", envir = env)]
-  else trips
-  trips <- if (!is.null(service_id)) 
-    trips[service_id %in% get("service_id", envir = env)]
-  else trips
+  trips <- if (!is.null(route_id)) trips[route_id %in% get("route_id", envir = env)] else trips
+  trips <- if (!is.null(service_id)) trips[service_id %in% get("service_id", envir = env)] else trips
   stops <- gtfs$stops[, .(stop_id, stop_name, stop_lon, stop_lat)]
-  stop_times <- gtfs$stop_times[trip_id %in% trips$trip_id]
+  
+  stop_times <- gtfs$stop_times[trips$trip_id, on = "trip_id"]
+  # stop_times <- gtfs$stop_times[trip_id %in% trips$trip_id]
+  
   stop_times <- stop_times[, .(trip_id, stop_id, arrival_time, 
                                departure_time, stop_sequence)]
   trips <- trips[, .(trip_id, route_id, shape_id)]

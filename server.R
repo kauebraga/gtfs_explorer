@@ -317,6 +317,7 @@ function(input, output, session) {
   
   # count to know how many times tab was clicked
   count <- reactiveVal(0)
+  count1 <- reactiveVal(0)
   
   
   
@@ -429,6 +430,15 @@ function(input, output, session) {
   
   observeEvent(c(input$choose_route, input$choose_service), {
     
+    # count to know how many times tab was clicked
+    count1(count1()+1)
+    
+    # open gtfs only on the first time the tab is open
+    if(count1() > 1) {
+      waiter_show(html = tagList(spin_loaders(id = 2, color = "black")),
+                  color = "rgba(233, 235, 240, .5)")
+    }
+    
     
     # get gtfs
     values$gtfs$stop_times <- values$stop_times
@@ -465,7 +475,7 @@ function(input, output, session) {
     stops_n <- stops_filter[, .N, by = direction_id]
     
     # calculate distance
-    shapes_filter$dist <- st_length(shapes_filter)
+    shapes_filter$dist <- sf::st_length(shapes_filter)
     dist_mean <- mean(as.numeric(shapes_filter$dist))
     
     
@@ -585,7 +595,10 @@ function(input, output, session) {
     output$graph_frequency <- renderHighchart({
       
       
-      hchart(mean_frequency[[2]], "column", hcaes(y = headway_mean, x = hour, group = shape_id)
+      mean_frequency[[2]][, direction := fcase(direction_id == 0, "Inbound",
+                                               direction_id == 1, "Outbound")]
+      
+      hchart(mean_frequency[[2]], "column", hcaes(y = headway_mean, x = hour, group = direction)
              # dataLabels = list(enabled = TRUE, format='{point.headway_mean}')
       ) %>%
         hc_xAxis(

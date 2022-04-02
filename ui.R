@@ -13,6 +13,8 @@ shinyUI(
       # disconnectMessage(),
       # Use loading page
       use_waiter(),
+      waiter_preloader(html = tagList(spin_loaders(id = 2, color = "black")), 
+                                      color = "rgba(233, 235, 240, .5)"),
       # Start navbar page
       navbarPage("GTFS Explorer", id = "tabs",
                  # Map page
