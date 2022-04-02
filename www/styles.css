@@ -1,6 +1,24 @@
 
 @import url("//fonts.googleapis.com/css?family=Roboto|Roboto+Condensed:400,700");
 @import url("//fonts.googleapis.com/css?family=Lobster");
+@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);
+
+/* INFO BOX
+#shiny-disconnected-overlay { display: none !important; }
+
+#ss-overlay {
+   background-color: red !important;
+   opacity: {{overlayOpacity}} !important;
+   position: fixed !important;
+   top: 0 !important;
+   left: 0 !important;
+   bottom: 0 !important;
+   right: 0 !important;
+   z-index: 99998 !important;
+   overflow: hidden !important;
+   cursor: not-allowed !important;
+}
+*/
 
 #choose_route {
   z-index: 999999;

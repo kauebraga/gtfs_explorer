@@ -14,7 +14,7 @@ function(input, output, session) {
                          div(style = "width: 50%;margin: 0 auto;", 
                              fileInput(
                                inputId = "gtfs", 
-                               label = "Choose CSV File",
+                               label = "Choose GTFS File",
                                multiple = TRUE,
                                accept = c(".zip"))
                          )
@@ -101,7 +101,40 @@ function(input, output, session) {
     
     w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
     
+    
     values$gtfs <- gtfs1
+    
+    
+    
+    # if there is no shapes..
+    if (!("shapes" %in% names(values$gtfs) )) {
+      
+      waiter_hide()
+      a <- div(id = "modal_lang",
+               modalDialog(title = "Without Shapes",
+                           "GTFS doenst have shapes.txt file, and will not show visualizations",
+                           easyClose = TRUE,
+                           size = "m"
+                           # footer = tagList(
+                           #   # modalButton("Cancel"),
+                           #   actionButton("refresh", "Refresh")
+                           #   
+                           # )
+               ))
+      
+      showModal(a)
+      
+      # stop("uii")
+      # session$close()
+    }
+    
+    observeEvent(input$refresh, {
+      
+      print(input$refresh)
+      removeModal()
+      refresh()
+    })
+    
     shapes <- gtfstools::convert_shapes_to_sf(gtfs1)
     # shapes <- sf::st_simplify(shapes)
     # bring route to the shapes
@@ -115,16 +148,49 @@ function(input, output, session) {
     # number of routes by route_type
     # 
     
+    print(names(values$gtfs))
+    
+    if ("frequencies" %in% names(values$gtfs)) {
+      
+      # calculate the number of trips by trip_id
+      
+      # transform to itime
+      values$gtfs$frequencies[, ':='(end_time = as.ITime(end_time), start_time = as.ITime(start_time))]
+      
+      # definir quantidade de viagens
+      # transform hours to numeric
+      # now hours are represented as the number of seconds within a day
+      values$gtfs$frequencies[, ':='(end_time = fifelse(end_time == as.ITime("00:00:00"), 86400, as.numeric(end_time)), 
+                                     start_time = as.numeric(start_time))]
+      
+      values$gtfs$frequencies[, tempo_freq := end_time - start_time]
+      
+      # calculate the amount of trips
+      values$gtfs$frequencies[, ntrips := floor(tempo_freq/headway_secs) + 1]
+      # group and sumns
+      trips_by_tripid <- values$gtfs$frequencies[, .(ntrips = sum(ntrips)), by = trip_id]
+      
+      # bring ntrips to the trips files
+      values$gtfs$trips[trips_by_tripid, on = "trip_id",
+                        c("ntrips") := list(i.ntrips)]
+      
+    } else {
+      
+      # print(class(values$gtfs$trips))
+      values$gtfs$trips[, ntrips := 1]
+      
+    }
+    
     # identify weekday in services
     services_workday <- values$gtfs$calendar[monday == 1 | tuesday == 1 | wednesday == 1 | thursday == 1 | friday == 1]
     services_saturday <- values$gtfs$calendar[saturday == 1]
     services_sunday <- values$gtfs$calendar[sunday == 1]
     
-    trips_workday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trips = .N)]
+    trips_workday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trips = sum(ntrips))]
     trips_workday[, type := "Workday"]
-    trips_saturday <- values$gtfs$trips[service_id %in% services_saturday$service_id, .(trips = .N)]
+    trips_saturday <- values$gtfs$trips[service_id %in% services_saturday$service_id, .(trips = sum(ntrips))]
     trips_saturday[, type := "Saturday"]
-    trips_sunday <- values$gtfs$trips[service_id %in% services_sunday$service_id, .(trips = .N)]
+    trips_sunday <- values$gtfs$trips[service_id %in% services_sunday$service_id, .(trips = sum(ntrips))]
     trips_sunday[, type := "Sunday"]
     # bind
     trips_days <- rbind(trips_workday, trips_saturday, trips_sunday)
@@ -395,6 +461,13 @@ function(input, output, session) {
     stops_filter <- kauetools::extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
     stops_filter[, direction_id := rleid(shape_id)]
     
+    # calculate number of stops
+    stops_n <- stops_filter[, .N, by = direction_id]
+    
+    # calculate distance
+    shapes_filter$dist <- st_length(shapes_filter)
+    dist_mean <- mean(as.numeric(shapes_filter$dist))
+    
     
     # calculate speeds
     mean_speed <- gtfstools::get_trip_speed(values$gtfs, trip_id = trips_filter$trip_id, file = "shapes")
@@ -425,7 +498,7 @@ function(input, output, session) {
       
       
       leaflet() %>%
-        addTiles() %>%
+        addProviderTiles(providers$CartoDB.Positron) %>%
         addAwesomeMarkers(data = stops_filter[direction_id == 1], 
                           lng = ~stop_lon, lat = ~stop_lat, 
                           group = "Inbound",
@@ -448,10 +521,15 @@ function(input, output, session) {
     
     output$speed_infobox <- renderInfoBox({
       infoBox(
-        "Velocidade",
+        "Speed",
         paste0(round(mean_speed), " km/h"),
-        icon = icon("user-friends"),
-        color = "black"
+        # icon = icon("gauge-high", verify_fa = FALSE),
+        icon = icon("clock", verify_fa = FALSE),
+        # icon = fontawesome::fa("clock"),
+        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+        # color = ifelse(mean_speed < 12, "red", ifelse(mean_speed >= 12 & mean_speed <= 17, "black", "blue")),
+        color = "black",
+        fill = FALSE
         # width = 12
       )
       
@@ -459,14 +537,50 @@ function(input, output, session) {
     
     output$frequency_infobox <- renderInfoBox({
       infoBox(
-        "Frequência",
+        "Frequency",
         paste0(round(c(mean_frequency_inbound)), " minutos"),
-        icon = icon("user-friends"),
-        color = "black",
-        width = 12
+        icon = icon("clock", verify_fa = FALSE),
+        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+        # color = "black",
+        # width = 12
       )
       
     })
+    
+    # quantidade de paradas
+    output$stops_infobox <- renderInfoBox({
+      infoBox(
+        "Stops",
+        paste0(stops_n[1,2], " stops"),
+        icon = icon("bus", verify_fa = FALSE),
+        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+        color = "black",
+        fill = FALSE
+        # width = 12
+      )
+      
+    })
+    # comprimento da linha
+    output$length_infobox <- renderInfoBox({
+      infoBox(
+        "Distance",
+        # label_with_info(label = "Distance", 
+        #                 tooltip_id = "q3_graph",
+        #                 tooltip_title = "Distance",
+        #                 tooltip_text = "www/tooltips/popover_activity.html"),
+        # "Distância",
+        paste0(round(dist_mean/1000), " km"),
+        icon = icon("ruler", verify_fa = FALSE),
+        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+        color = "black",
+        fill = FALSE,
+        # width = 12
+      )
+      
+    })
+    
+    
+    # tempo total de viagem
     
     output$graph_frequency <- renderHighchart({
       

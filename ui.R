@@ -7,6 +7,10 @@ shinyUI(
       tags$head(includeCSS("www/styles.css")),
       tags$style(type = "text/css", "#map_city, #map_routes {height: calc(100vh - 120px) !important;}"),
       useShinydashboard(),
+      # shinyjs::useShinyjs(),
+      # tags$head(tags$script(src = "teste.js")),
+      # use_bs_popover(), # you need to call this function somewhere in your ui
+      # disconnectMessage(),
       # Use loading page
       use_waiter(),
       # Start navbar page
@@ -18,7 +22,7 @@ shinyUI(
                    # waiterOnBusy(),
                    # waiterPreloader(),
                    waiter_hide_on_render("map_city"),
-                   title = "Mapa", 
+                   title = "Map", 
                    value = "tab_general",
                    fluidRow(
                      column(width = 8, 
@@ -43,7 +47,7 @@ shinyUI(
                    )),
                  tabPanel(
                    # title = uiOutput('title_map'), 
-                   title = "Rotas", 
+                   title = "Routes", 
                    value = "tab_routes", 
                    fluidRow(
                      column(width = 7,
@@ -54,9 +58,39 @@ shinyUI(
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # # selecionar linha
                                 uiOutput("service_choice"),
-                                uiOutput("route_choice")),
+                                uiOutput("route_choice"),
+                                bsPopover(
+                                  id = "bins", title = "bins", content =  "this one is okay!"
+                                )),
                             box(width = NULL, solidHeader = TRUE,
-                                infoBoxOutput("speed_infobox")
+                                infoBoxOutput("speed_infobox"),
+                                infoBoxOutput("stops_infobox"),
+                                # div(class = "valuebox-tip",
+                                #     shinydashboard::infoBoxOutput("length_infobox")
+                                # ),
+                                # tippy::tippy_class(
+                                #   "valuebox-tip",
+                                #   content = "Você precisa importar o css do pacote shinydashboard se quiser usar valueBoxes fora do shinydashboard."
+                                # )
+                                infoBoxOutput("length_infobox")
+                                # shinyInput_label_embed(
+                                #   shiny_iconlink() %>%
+                                #     bs_embed_popover(
+                                #       title = "Letter", content = "Choose a favorite", placement = "left"
+                                #     )
+                                # shinyInput_label_embed(
+                                # shiny_iconlink() %>%
+                                #   bs_embed_popover(
+                                #     title = "Letter", content = "Choose a favorite", placement = "left"
+                                #   ))
+                                # div(bsPopover(id = "q3_graph",
+                                #               title = "teste",
+                                #               content = includeHTML("www/tooltips/popover_activity.html"),
+                                #               placement = "top",
+                                #               trigger = "hover",
+                                #               options = list(container = "body")
+                                # ))
+                                # shinyInput_label_embed(bs_embed_popover(title = "Bins", content = "this one is okay!"))
                             ),
                             box(width = NULL, solidHeader = TRUE,
                                 highchartOutput("graph_frequency", height = "300px")
