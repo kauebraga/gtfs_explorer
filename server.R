@@ -22,6 +22,7 @@ function(input, output, session) {
                        easyClose = FALSE,
                        size = "m",
                        footer = NULL
+                       # footer = "Please be aware that this is an experimental application"
                        # footer = actionButton("dismiss_modal",label = "Dismiss")
                        # footer = div(id = "openDetails", class = "btn btn-default action-button shiny-bound-input",
                        #              tagList(
@@ -143,12 +144,7 @@ function(input, output, session) {
     shapes <- sf::st_sf(shapes)
     values$shapes <- shapes
     
-    # boxes:
-    # number of trips by service_id
-    # number of routes by route_type
-    # 
-    
-    print(names(values$gtfs))
+    # print(names(values$gtfs))
     
     if ("frequencies" %in% names(values$gtfs)) {
       
@@ -213,9 +209,9 @@ function(input, output, session) {
                  title = list(text = ""),
                  tickLength = 0,
                  gridLineWidth = 0) %>%
-        hc_title(
-          text = "Trips by weekday"
-        ) %>%
+        # hc_title(
+        #   text = "Trips by weekday"
+        # ) %>%
         hc_chart(style = list(fontFamily = "Roboto Condensed")) %>%
         hc_plotOptions(bar = list(borderRadius = 1,
                                   borderColor = "#000000",
@@ -277,24 +273,39 @@ function(input, output, session) {
       
       
     })
-    
     # waiter_hide()
     
     
     
     # routes by type
     route_by_type <- values$gtfs$routes[, .N, by = route_type]
+    # bring names
+    route_by_type <- merge(route_by_type, data.table(route_type = 0:3,
+                                                     text = c("LRT", "Subway", "Rail", "Bus")),
+                           sort = FALSE,
+                           by = "route_type")
     
+    setorder(route_by_type, route_type)
     
-    # output$speed_infobox <- renderInfoBox({
-    #   infoBox(
-    #     "Velocidade",
-    #     paste0(round(mean_speed), " km/h"),
-    #     icon = icon("user-friends"),
-    #     color = "black"
-    #   )
-    #   
-    # })
+    output$ibox <- renderUI({
+      
+      info_routes <- function(route) {
+        infoBox1(
+          title = route_by_type[route_type == route]$text,
+          value = paste0(route_by_type[route_type == route]$N, " routes"),
+          icon = switch(as.character(route), 
+                        "0" = icon("user-friends"),
+                        "1" = icon("train-subway"),
+                        "2" = icon("train"),
+                        "3" = icon("bus")), 
+          color = "black"
+        )
+      }
+      
+      # apply fun
+      lapply(sort(route_by_type$route_type), info_routes)
+      
+    })
     
     
     
@@ -398,7 +409,7 @@ function(input, output, session) {
       # get unique routes
       routes <- unique(routes, by = c("route_id"))
       # modify long name
-      routes[, route_name := paste0(route_long_name)]
+      routes[, route_name := paste0(route_short_name)]
       # routes[, route_name := paste0(route_short_name)]
       # routes[, route_name := paste0(route_short_name, " - ", route_long_name)]
       
@@ -529,62 +540,71 @@ function(input, output, session) {
       
     })
     
-    output$speed_infobox <- renderInfoBox({
-      infoBox(
-        "Speed",
-        paste0(round(mean_speed), " km/h"),
-        # icon = icon("gauge-high", verify_fa = FALSE),
-        icon = icon("clock", verify_fa = FALSE),
-        # icon = fontawesome::fa("clock"),
-        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
-        # color = ifelse(mean_speed < 12, "red", ifelse(mean_speed >= 12 & mean_speed <= 17, "black", "blue")),
-        color = "black",
-        fill = FALSE
-        # width = 12
-      )
-      
-    })
     
-    output$frequency_infobox <- renderInfoBox({
-      infoBox(
-        "Frequency",
-        paste0(round(c(mean_frequency_inbound)), " minutos"),
-        icon = icon("clock", verify_fa = FALSE),
-        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
-        # color = "black",
-        # width = 12
-      )
-      
-    })
     
-    # quantidade de paradas
-    output$stops_infobox <- renderInfoBox({
-      infoBox(
-        "Stops",
-        paste0(stops_n[1,2], " stops"),
-        icon = icon("bus", verify_fa = FALSE),
-        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
-        color = "black",
-        fill = FALSE
-        # width = 12
-      )
+    
+    # output$frequency_infobox <- renderInfoBox({
+    #   infoBox(
+    #     "Frequency",
+    #     paste0(round(c(mean_frequency_inbound)), " minutos"),
+    #     icon = icon("clock", verify_fa = FALSE),
+    #     # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+    #     # color = "black",
+    #     # width = 12
+    #   )
+    #   
+    # })
+    
+    
+    
+    # infobox routes ----------------------------------------------------------
+    
+    output$infobox_routes <- renderUI({    
       
-    })
-    # comprimento da linha
-    output$length_infobox <- renderInfoBox({
-      infoBox(
-        "Distance",
-        # label_with_info(label = "Distance", 
-        #                 tooltip_id = "q3_graph",
-        #                 tooltip_title = "Distance",
-        #                 tooltip_text = "www/tooltips/popover_activity.html"),
-        # "Distância",
-        paste0(round(dist_mean/1000), " km"),
-        icon = icon("ruler", verify_fa = FALSE),
-        # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
-        color = "black",
-        fill = FALSE,
-        # width = 12
+      
+      list(
+        # speed
+        infoBox1(
+          "Speed",
+          paste0(round(mean_speed), " km/h"),
+          # icon = icon("gauge-high", verify_fa = FALSE),
+          icon = icon("gauge", verify_fa = FALSE),
+          # icon = fontawesome::fa("clock"),
+          # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+          # color = ifelse(mean_speed < 12, "red", ifelse(mean_speed >= 12 & mean_speed <= 17, "black", "blue")),
+          color = "black",
+          fill = FALSE,
+          width = 12, width2 = 6, width3 = 6, width4 = 4,
+        ),
+        
+        # quantidade de paradas
+        infoBox1(
+          "Stops",
+          paste0(stops_n[1,2], " stops"),
+          icon = icon("bus", verify_fa = FALSE),
+          # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+          color = "black",
+          fill = FALSE,
+          width = 12, width2 = 6, width3 = 6, width4 = 4,
+          # width = 12
+        ),
+        
+        # comprimento da linha
+        infoBox1(
+          # "Distance",
+          label_with_info(label = "Distance",
+                          tooltip_id = "q3_graph",
+                          tooltip_title = "Distance",
+                          tooltip_text = "www/tooltips/popover_activity.html"),
+          # "Distância",
+          paste0(round(dist_mean/1000), " km"),
+          icon = icon("ruler", verify_fa = FALSE),
+          # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
+          color = "black",
+          fill = FALSE,
+          width = 12, width2 = 12, width3 = 6, width4 = 4,
+          # width = 12
+        )
       )
       
     })

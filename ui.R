@@ -16,7 +16,7 @@ shinyUI(
       waiter_preloader(html = tagList(spin_loaders(id = 2, color = "black")), 
                                       color = "rgba(233, 235, 240, .5)"),
       # Start navbar page
-      navbarPage("GTFS Explorer", id = "tabs",
+      navbarPage(title = "GTFS Explorer", id = "tabs", collapsible = TRUE,
                  # Map page
                  tabPanel(
                    # title = uiOutput('title_map'), 
@@ -27,12 +27,14 @@ shinyUI(
                    title = "Map", 
                    value = "tab_general",
                    fluidRow(
-                     column(width = 8, 
+                     column1(width = 7, width2 = 8, width3 = 9,  
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 leafletOutput("map_city"))),
-                     column(width = 4, 
-                            box(width = NULL, solidHeader = TRUE,
-                                highchartOutput("graph_trips_by_service", height = "250px")))
+                     column1(width = 5,  width2 = 4, width3 = 3,  
+                            box(width = NULL, solidHeader = TRUE, title = "Trips by weekday",
+                                highchartOutput("graph_trips_by_service", height = "250px")),
+                            box(width = NULL, solidHeader = TRUE, title = "Routes",
+                                uiOutput("ibox")))
                      # absolutePanel(id = "controls_graphs1", class = "panel panel-default", 
                      #               fixed = TRUE, draggable = FALSE,
                      #               top = 80, left = 80, height = "100%", width = "70%",
@@ -52,11 +54,11 @@ shinyUI(
                    title = "Routes", 
                    value = "tab_routes", 
                    fluidRow(
-                     column(width = 7,
+                     column1(width = 6, width2 = 7, width3 = 8,
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # Output map
                                 leafletOutput("map_routes"))),
-                     column(width = 5,
+                     column1(width = 6,  width2 = 5, width3 = 4,  
                             box(width = NULL, height = NULL, solidHeader = TRUE,
                                 # # selecionar linha
                                 uiOutput("service_choice"),
@@ -65,8 +67,7 @@ shinyUI(
                                   id = "bins", title = "bins", content =  "this one is okay!"
                                 )),
                             box(width = NULL, solidHeader = TRUE,
-                                infoBoxOutput("speed_infobox"),
-                                infoBoxOutput("stops_infobox"),
+                                uiOutput("infobox_routes")
                                 # div(class = "valuebox-tip",
                                 #     shinydashboard::infoBoxOutput("length_infobox")
                                 # ),
@@ -74,7 +75,6 @@ shinyUI(
                                 #   "valuebox-tip",
                                 #   content = "Você precisa importar o css do pacote shinydashboard se quiser usar valueBoxes fora do shinydashboard."
                                 # )
-                                infoBoxOutput("length_infobox")
                                 # shinyInput_label_embed(
                                 #   shiny_iconlink() %>%
                                 #     bs_embed_popover(
@@ -95,7 +95,7 @@ shinyUI(
                                 # shinyInput_label_embed(bs_embed_popover(title = "Bins", content = "this one is okay!"))
                             ),
                             box(width = NULL, solidHeader = TRUE,
-                                highchartOutput("graph_frequency", height = "300px")
+                                highchartOutput("graph_frequency", height = "250px")
                             )
                      )
                      # tableOutput("table_routes")

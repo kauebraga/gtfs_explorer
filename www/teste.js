@@ -9,8 +9,6 @@ $(document).on('shiny:error', function(event) {
 
 
 
-
-
 function alertme(id){
   var name = prompt("Who are you?");
   alert("Hello " + name + "! You're seeing " + id);
