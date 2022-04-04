@@ -99,8 +99,14 @@ function(input, output, session) {
     # calculate distance
     values$gtfs$shapes$dist <- as.numeric(sf::st_length(values$gtfs$shapes))
     
+    type_gtfs <- if (any(grepl(pattern = "frequencies", x = names(values$gtfs)))) {
+      
+      if(nrow(values$gtfs$frequencies) > 0) "frequencies" else "stop_times"
+      
+    } else "stop_times"
+    
     # calculate trips
-    if ("frequencies" %in% names(values$gtfs)) {
+    if (type_gtfs == "frequencies") {
       
       # calculate the number of trips by trip_id
       
