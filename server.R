@@ -391,8 +391,21 @@ function(input, output, session) {
         
         print("loading st")
         
-        values$gtfs$stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
-                                                       files = "stop_times")$stop_times
+        if (length(input$gtfs$datapath) == 1) {
+          
+          
+          values$gtfs$stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
+                                              files = "stop_times")$stop_times
+          
+        } else {
+          
+          values$gtfs$stop_times <- lapply(input$gtfs$datapath, gtfstools::read_gtfs, 
+                                           files = "stop_times")
+          values$gtfs$stop_times <- do.call(gtfstools::merge_gtfs, values$gtfs$stop_times)
+          values$gtfs$stop_times <- values$gtfs$stop_times$stop_times
+          
+        }
+        
         # bring routes
         values$gtfs$stop_times <- merge(values$gtfs$stop_times, values$gtfs$trips[, .(service_id, trip_id, route_id, shape_id, direction_id)],
                                         sort = FALSE)
