@@ -29,10 +29,12 @@ shinyUI(
                    fluidRow(
                      column1(width = 7, width2 = 8, width3 = 9,  
                             box(width = NULL, height = NULL, solidHeader = TRUE,
-                                leafletOutput("map_city"))),
+                                leafletOutput("map_city")
+                                )),
                      column1(width = 5,  width2 = 4, width3 = 3,  
                             box(width = NULL, solidHeader = TRUE, title = "Trips by weekday",
-                                highchartOutput("graph_trips_by_service", height = "250px")),
+                                highchartOutput("graph_trips_by_service", height = "250px")
+                                ),
                             box(width = NULL, solidHeader = TRUE, title = "Routes",
                                 uiOutput("ibox")))
                      # absolutePanel(id = "controls_graphs1", class = "panel panel-default", 

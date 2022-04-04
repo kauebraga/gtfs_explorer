@@ -4,7 +4,7 @@ function(input, output, session) {
   
   # set reactive values
   values <- reactiveValues(gtfs = NULL, stop_times = NULL, modal_closed = FALSE,
-                           route_selected = NULL)
+                           route_selected = NULL, trips_day = NULL)
   
   # 1) modal to upload gtfs at startup ----------------------------------------------------------
   query_modal <- div(id = "modal_lang", 
@@ -36,12 +36,14 @@ function(input, output, session) {
   # Show the model on start up ...
   showModal(query_modal)
   
-  # ok 
+  # ok
   w <- Waiter$new(
     # html = span("Loading..."),
     # html = spin_loader(),
     # color = transparent(.7)
   )
+  
+  
   # w <- Waiter$new(id = c('map_city', "graph_trips_by_service", "map_routes"),
   #                        html = spin_loader(), color = "##F4F6F6")
   
@@ -55,97 +57,49 @@ function(input, output, session) {
   
   
   
+  # ok
+  
+  
+  
+  
   # 2) open gtfs and calculate map ------------------------------------------
   
   
   observeEvent(input$gtfs, {
     
-    
-    req(input$gtfs)
-    
     removeModal()
-    # ok
+    
+    
     waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Opening GTFS...", style = "color: black")),
                 color = "rgba(233, 235, 240, .5)")
     
-    # w$update(html = tagList(spin_fading_circles(), br(), "Opening GTFS.."))
     
-    print(length(input$gtfs$datapath))
+    # req(input$gtfs)
     
     if (length(input$gtfs$datapath) == 1) {
       
       
-      gtfs1 <- gtfstools::read_gtfs(input$gtfs$datapath,
-                                    skip = "stop_times")
+      values$gtfs <- gtfstools::read_gtfs(input$gtfs$datapath,
+                                          skip = "stop_times")
       
     } else {
       
-      gtfs1 <- lapply(input$gtfs$datapath, gtfstools::read_gtfs, skip = "stop_times")
-      gtfs1 <- do.call(gtfstools::merge_gtfs, gtfs1)
+      values$gtfs <- lapply(input$gtfs$datapath, gtfstools::read_gtfs, skip = "stop_times")
+      values$gtfs <- do.call(gtfstools::merge_gtfs, values$gtfs)
       
     }
     
-    print(input$gtfs$name)
+    # calculate shapes
     
-    # # upload gtfs locally
-    # gtfstools::write_gtfs(
-    #   gtfs1,
-    #   path = file.path("data_teste", paste0(basename(input$gtfs$name), "-", gsub(" ", "_", Sys.time())))
-    # )
-    
-    # upload gtfs locally
-    # data_upload <- data.table(gtfs = input$gtfs$name, time = Sys.time())
-    # fwrite(data_upload,
-    #        file = "data_teste/gtfs_uploads.csv",
-    #        append = TRUE
-    # )
-    
-    w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
-    
-    
-    values$gtfs <- gtfs1
-    
-    
-    
-    # if there is no shapes..
-    if (!("shapes" %in% names(values$gtfs) )) {
-      
-      waiter_hide()
-      a <- div(id = "modal_lang",
-               modalDialog(title = "Without Shapes",
-                           "GTFS doenst have shapes.txt file, and will not show visualizations",
-                           easyClose = TRUE,
-                           size = "m"
-                           # footer = tagList(
-                           #   # modalButton("Cancel"),
-                           #   actionButton("refresh", "Refresh")
-                           #   
-                           # )
-               ))
-      
-      showModal(a)
-      
-      # stop("uii")
-      # session$close()
-    }
-    
-    observeEvent(input$refresh, {
-      
-      print(input$refresh)
-      removeModal()
-      refresh()
-    })
-    
-    shapes <- gtfstools::convert_shapes_to_sf(gtfs1)
-    # shapes <- sf::st_simplify(shapes)
+    values$gtfs$shapes <- gtfstools::convert_shapes_to_sf(values$gtfs)
     # bring route to the shapes
-    shapes <- merge(shapes, unique(gtfs1$trips, by = c("route_id", "shape_id")))
-    shapes <- merge(shapes, gtfs1$routes[, .(route_id, route_short_name, route_long_name, route_type)])
-    shapes <- sf::st_sf(shapes)
-    values$shapes <- shapes
+    values$gtfs$shapes <- merge(values$gtfs$shapes, unique(values$gtfs$trips, by = c("route_id", "shape_id")))
+    values$gtfs$shapes <- merge(values$gtfs$shapes, values$gtfs$routes[, .(route_id, route_short_name, route_long_name, route_type)])
+    values$gtfs$shapes <- sf::st_sf(values$gtfs$shapes)
+    # calculate distance
+    values$gtfs$shapes$dist <- as.numeric(sf::st_length(values$gtfs$shapes))
     
-    # print(names(values$gtfs))
-    
+    # calculate trips
     if ("frequencies" %in% names(values$gtfs)) {
       
       # calculate the number of trips by trip_id
@@ -188,17 +142,20 @@ function(input, output, session) {
     trips_saturday[, type := "Saturday"]
     trips_sunday <- values$gtfs$trips[service_id %in% services_sunday$service_id, .(trips = sum(ntrips))]
     trips_sunday[, type := "Sunday"]
-    # bind
-    trips_days <- rbind(trips_workday, trips_saturday, trips_sunday)
     
     values$trips_workday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trip_id)]
     values$trips_saturday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trip_id)]
     values$trips_sunday <- values$gtfs$trips[service_id %in% services_workday$service_id, .(trip_id)]
     
+    # bind
+    values$trips_day <- rbind(trips_workday, trips_saturday, trips_sunday)
+    
+    
     output$graph_trips_by_service <- renderHighchart({
       
+      req(values$trips_day)
       
-      hchart(trips_days, "bar", hcaes(y = trips, x = type),
+      hchart(values$trips_day, "bar", hcaes(y = trips, x = type),
              name = "Frequência") %>%
         hc_xAxis(
           title = list(text = "")
@@ -226,15 +183,18 @@ function(input, output, session) {
         ))
     })
     
+    w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
     
     output$map_city <- renderLeaflet({
+      
+      req(values$gtfs$shapes)
       
       
       map_layers <- function() {
         
         
         # get route types
-        k <- unique(shapes$route_type)
+        k <- unique(values$gtfs$shapes$route_type)
         
         df <- data.table(sigla = 0:3,
                          text = c("LRT", "Subway", "Rail", "Bus"))
@@ -248,7 +208,7 @@ function(input, output, session) {
         for (i in seq_along(k)) {
           map <- map %>% 
             addGlPolylines(
-              data = subset(shapes, route_type == k[[i]]), 
+              data = subset(values$gtfs$shapes, route_type == k[[i]]), 
               group = as.character(df[sigla == k[[i]]]$text),
               color = "black"
               # layerId = ~route_id
@@ -270,29 +230,33 @@ function(input, output, session) {
       #plot the map
       map_layers()
       
-      
-      
     })
-    # waiter_hide()
     
-    
-    
-    # routes by type
-    route_by_type <- values$gtfs$routes[, .N, by = route_type]
-    # bring names
-    route_by_type <- merge(route_by_type, data.table(route_type = 0:3,
-                                                     text = c("LRT", "Subway", "Rail", "Bus")),
-                           sort = FALSE,
-                           by = "route_type")
-    
-    setorder(route_by_type, route_type)
+    routes_by_type <- reactive({
+      
+      req(values$gtfs$routes)
+      
+      # routes by type
+      route_by_type <- values$gtfs$routes[, .N, by = route_type]
+      # bring names
+      route_by_type <- merge(route_by_type, data.table(route_type = 0:3,
+                                                       text = c("LRT", "Subway", "Rail", "Bus")),
+                             sort = FALSE,
+                             by = "route_type")
+      
+      setorder(route_by_type, route_type)
+      
+      return(route_by_type)
+      
+      
+    })  
     
     output$ibox <- renderUI({
       
       info_routes <- function(route) {
         infoBox1(
-          title = route_by_type[route_type == route]$text,
-          value = paste0(route_by_type[route_type == route]$N, " routes"),
+          title = routes_by_type()[route_type == route]$text,
+          value = paste0(routes_by_type()[route_type == route]$N, " routes"),
           icon = switch(as.character(route), 
                         "0" = icon("user-friends"),
                         "1" = icon("train-subway"),
@@ -303,13 +267,75 @@ function(input, output, session) {
       }
       
       # apply fun
-      lapply(sort(route_by_type$route_type), info_routes)
+      lapply(sort(routes_by_type()$route_type), info_routes)
       
     })
     
-    
-    
   })
+  
+  
+  
+  
+  
+  # observeEvent(input$gtfs, {
+  
+  
+  
+  
+  
+  
+  # # upload gtfs locally
+  # gtfstools::write_gtfs(
+  #   gtfs1,
+  #   path = file.path("data_teste", paste0(basename(input$gtfs$name), "-", gsub(" ", "_", Sys.time())))
+  # )
+  
+  # upload gtfs locally
+  # data_upload <- data.table(gtfs = input$gtfs$name, time = Sys.time())
+  # fwrite(data_upload,
+  #        file = "data_teste/gtfs_uploads.csv",
+  #        append = TRUE
+  # )
+  
+  # w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
+  
+  
+  # values$gtfs <- gtfs1
+  
+  
+  
+  # # if there is no shapes..
+  # if (!("shapes" %in% names(values$gtfs) )) {
+  #   
+  #   waiter_hide()
+  #   a <- div(id = "modal_lang",
+  #            modalDialog(title = "Without Shapes",
+  #                        "GTFS doenst have shapes.txt file, and will not show visualizations",
+  #                        easyClose = TRUE,
+  #                        size = "m"
+  #                        # footer = tagList(
+  #                        #   # modalButton("Cancel"),
+  #                        #   actionButton("refresh", "Refresh")
+  #                        #   
+  #                        # )
+  #            ))
+  #   
+  #   showModal(a)
+  #   
+  #   # stop("uii")
+  #   # session$close()
+  # }
+  
+  
+  
+  
+  
+  # })
+  
+  
+  
+  
+  
   
   
   
@@ -354,13 +380,13 @@ function(input, output, session) {
         
         print("loading st")
         
-        stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
-                                           files = "stop_times")$stop_times
+        values$gtfs$stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
+                                                       files = "stop_times")$stop_times
         # bring routes
-        stop_times <- merge(stop_times, values$gtfs$trips[, .(service_id, trip_id, route_id, shape_id, direction_id)],
-                            sort = FALSE)
+        values$gtfs$stop_times <- merge(values$gtfs$stop_times, values$gtfs$trips[, .(service_id, trip_id, route_id, shape_id, direction_id)],
+                                        sort = FALSE)
         
-        values$stop_times <- stop_times
+        # values$stop_times <- stop_times
       }
       
       
@@ -389,7 +415,7 @@ function(input, output, session) {
     # create lists with routes names and types --------------------------------
     
     # list available route_types
-    route_types_available <- sort(unique(values$shapes$route_type))
+    route_types_available <- sort(unique(values$gtfs$shapes$route_type))
     
     a <- function(route_type1) {
       
@@ -403,31 +429,40 @@ function(input, output, session) {
       )
       
       # list all routes from that type
-      routes <- subset(values$shapes, route_type == route_type1)
+      routes <- subset(values$gtfs$shapes, route_type == route_type1)
       routes <- sf::st_set_geometry(routes, NULL)
       routes <- setDT(routes)
       # get unique routes
       routes <- unique(routes, by = c("route_id"))
       # modify long name
-      routes[, route_name := paste0(route_short_name)]
+      # routes[, route_name := paste0(route_short_name)]
       # routes[, route_name := paste0(route_short_name)]
       # routes[, route_name := paste0(route_short_name, " - ", route_long_name)]
       
       
       # compose names that will be on the pickerinput
-      list_routes <- list(structure(routes$route_id, .Names = routes$route_name))
-      # define name
-      names(list_routes) <- route_type_name
+      list_routes1 <- list(structure(routes$route_id, .Names = routes$route_short_name))
+      names(list_routes1) <- route_type_name
+      # list_routes2 <- list(structure(routes$route_id, .Names = routes$route_long_name))
+      # names(list_routes2) <- route_type_name
+      # list_routes3 <- list(structure(routes$route_id, .Names = routes$route_id))
+      # names(list_routes3) <- route_type_name
       
-      return(list_routes)
+      
+      list_end <- list_routes1
+      # list_end <- list(list_routes1, list_routes2, list_routes3)
+      return(list_end)
       
     }
     
     routes_choices <- lapply(unique(route_types_available), a)
     routes_choices <- do.call(c, routes_choices)
     
+    # TDODO: search by "id, short name or long name"
     pickerInput(inputId = "choose_route",
                 label = "Choose a route",
+                # RADIO BUTTONS HERE TO SEELCT NAMES
+                # label = div("Choose a route")
                 choices = routes_choices,
                 # selected = "075",
                 options = pickerOptions(
@@ -437,29 +472,20 @@ function(input, output, session) {
   })
   
   
+  # reactive to calculate indicators
   
-  
-  observeEvent(c(input$choose_route, input$choose_service), {
-    
-    # count to know how many times tab was clicked
-    count1(count1()+1)
-    
-    # open gtfs only on the first time the tab is open
-    if(count1() > 1) {
-      waiter_show(html = tagList(spin_loaders(id = 2, color = "black")),
-                  color = "rgba(233, 235, 240, .5)")
-    }
-    
-    
-    # get gtfs
-    values$gtfs$stop_times <- values$stop_times
-    
-    # print(names(values$gtfs))
-    
+  shapes_filter <- reactive ({
     
     # filter shapes
-    shapes_filter <- subset(values$shapes, route_id == input$choose_route)
-    shapes_filter$direction_id <- rleid(shapes_filter$shape_id)
+    shapes_filter <- subset(values$gtfs$shapes, route_id == input$choose_route)
+    # class(shapes_filter)
+    # shapes_filter$direction_id <- rleid(shapes_filter$shape_id)
+    
+    
+  })
+  
+  service_filter <- reactive ({
+    
     
     # filter service
     service_to_filter <- if(input$choose_service == "Weekday") {
@@ -473,38 +499,103 @@ function(input, output, session) {
       values$trips_sunday$trip_id
     }
     
+    
+  })
+  
+  trips_filter <- reactive ({
+    
+    
+    
     # filter service
-    trips_filter <- subset(values$gtfs$trips, trip_id %in% service_to_filter)
+    trips_filter <- subset(values$gtfs$trips, trip_id %in% service_filter())
     # filter route
     trips_filter <- subset(trips_filter, route_id == input$choose_route)
     
+    
+  })
+  
+  
+  stops_filter <- reactive ({
+    
+    
     # calculate stops for each route
     stops_filter <- extract_scheduled_stops(values$gtfs, route_id = input$choose_route)
-    stops_filter[, direction_id := rleid(shape_id)]
+    # stops_filter[, direction_id := rleid(shape_id) - 1]
+    
+    
+  })
+  
+  stops_n_filter <- reactive ({
     
     # calculate number of stops
-    stops_n <- stops_filter[, .N, by = direction_id]
+    stops_n <- stops_filter()[, .N, by = direction_id]
+    
+    
+  })
+  
+  distance_filter <- reactive ({
     
     # calculate distance
-    shapes_filter$dist <- sf::st_length(shapes_filter)
-    dist_mean <- mean(as.numeric(shapes_filter$dist))
+    dist_mean <- mean(shapes_filter()$dist)
     
+    
+  })
+  
+  speed_filter <- reactive ({
     
     # calculate speeds
-    mean_speed <- gtfstools::get_trip_speed(values$gtfs, trip_id = trips_filter$trip_id, file = "shapes")
+    mean_speed <- get_trip_speed1(gtfs = values$gtfs, shapes = shapes_filter(), trips = trips_filter())
     mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
-    # print(mean_speed)
+    
+    
+  })
+  
+  frequency_filter <- reactive ({
     
     
     # calculate frequency
     mean_frequency <- calculate_route_frequency(gtfs = values$gtfs,
                                                 route_id = input$choose_route,
-                                                trip_id = service_to_filter,
+                                                trip_id = service_filter(),
                                                 start_time = "05:00:00",
                                                 end_time = "21:00:00",
                                                 mean_headway = TRUE)
     
     
+  })
+  
+  
+  
+  # render initial routes map -----------------------------------------------
+  
+  # first, extract gtfs bound
+  gtfs_bound <- reactive({
+    
+    sf::st_bbox(values$gtfs$shapes)
+  })
+  
+  output$map_routes <- renderLeaflet({
+    
+    
+    leaflet() %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      fitBounds(gtfs_bound()[[1]], gtfs_bound()[[2]], gtfs_bound()[[3]], gtfs_bound()[[4]])
+    
+  })
+  
+  
+  
+  # first observer to change the map
+  observeEvent(c(input$choose_route), {
+    
+    # count to know how many times tab was clicked
+    count1(count1()+1)
+    
+    # open gtfs only on the first time the tab is open
+    if(count1() > 1) {
+      waiter_show(html = tagList(spin_loaders(id = 2, color = "black")),
+                  color = "rgba(233, 235, 240, .5)")
+    }
     
     
     icons <- awesomeIcons(
@@ -513,52 +604,47 @@ function(input, output, session) {
       # iconrColor = 'black',
       iconRotate = 10)
     
-    
-    output$map_routes <- renderLeaflet({
-      
-      
-      
-      leaflet() %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        addAwesomeMarkers(data = stops_filter[direction_id == 1], 
-                          lng = ~stop_lon, lat = ~stop_lat, 
-                          group = "Inbound",
-                          label = ~htmlEscape(stop_name),
-                          icon = icons) %>%
-        addAwesomeMarkers(data = stops_filter[direction_id == 2], 
-                          lng = ~stop_lon, lat = ~stop_lat, 
-                          group = "Outbound",
-                          label = ~htmlEscape(stop_name), 
-                          icon = icons) %>%
-        addPolylines(data = subset(shapes_filter, direction_id == 1), group = "Inbound") %>%
-        addPolylines(data = subset(shapes_filter, direction_id == 2), group = "Outbound") %>%
-        addLayersControl(
-          overlayGroups = c("Inbound", "Outbound"),
-          options = layersControlOptions(collapsed = FALSE)) %>%
-        addMiniMap()
-      
-      
-    })
+    # # list available direction_id
+    # direction_id_go <- 
     
     
+    bbox <- sf::st_bbox(shapes_filter())
+    
+    map_go <- leafletProxy("map_routes", session) %>%
+      clearMarkers() %>%
+      clearShapes() %>%
+      clearControls() %>%
+      flyToBounds(bbox[[1]], bbox[[2]], bbox[[3]], bbox[[4]],
+                  options = list(duration = 1.5))
     
     
-    # output$frequency_infobox <- renderInfoBox({
-    #   infoBox(
-    #     "Frequency",
-    #     paste0(round(c(mean_frequency_inbound)), " minutos"),
-    #     icon = icon("clock", verify_fa = FALSE),
-    #     # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
-    #     # color = "black",
-    #     # width = 12
-    #   )
-    #   
-    # })
+    map_go %>%
+      addAwesomeMarkers(data = stops_filter()[direction_id == 0], 
+                        lng = ~stop_lon, lat = ~stop_lat, 
+                        group = "Inbound",
+                        label = ~htmlEscape(stop_name),
+                        icon = icons) %>%
+      addAwesomeMarkers(data = stops_filter()[direction_id == 1], 
+                        lng = ~stop_lon, lat = ~stop_lat, 
+                        group = "Outbound",
+                        label = ~htmlEscape(stop_name), 
+                        icon = icons) %>%
+      addPolylines(data = subset(shapes_filter(), direction_id == 0), group = "Inbound") %>%
+      addPolylines(data = subset(shapes_filter(), direction_id == 1), group = "Outbound") %>%
+      addLayersControl(
+        overlayGroups = c("Inbound", "Outbound"),
+        options = layersControlOptions(collapsed = FALSE)) %>%
+      addMiniMap()
+    
+    
+  })
+  
+  
+  observeEvent(c(input$choose_route, input$choose_service), {
     
     
     
     # infobox routes ----------------------------------------------------------
-    
     output$infobox_routes <- renderUI({    
       
       
@@ -566,7 +652,7 @@ function(input, output, session) {
         # speed
         infoBox1(
           "Speed",
-          paste0(round(mean_speed), " km/h"),
+          paste0(round(speed_filter()), " km/h"),
           # icon = icon("gauge-high", verify_fa = FALSE),
           icon = icon("gauge", verify_fa = FALSE),
           # icon = fontawesome::fa("clock"),
@@ -583,7 +669,7 @@ function(input, output, session) {
                           tooltip_id = "q4_graph",
                           tooltip_title = "Stops",
                           tooltip_text = "www/tooltips/popover_stops.html"),
-          paste0(stops_n[1,2], " stops"),
+          paste0(stops_n_filter()[1,2], " stops"),
           icon = icon("bus", verify_fa = FALSE),
           # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
           color = "black",
@@ -600,7 +686,7 @@ function(input, output, session) {
                           tooltip_title = "Distance",
                           tooltip_text = "www/tooltips/popover_activity.html"),
           # "Distância",
-          paste0(round(dist_mean/1000), " km"),
+          paste0(round(distance_filter()/1000), " km"),
           icon = icon("ruler", verify_fa = FALSE),
           # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
           color = "black",
@@ -618,10 +704,10 @@ function(input, output, session) {
     output$graph_frequency <- renderHighchart({
       
       
-      mean_frequency[[2]][, direction := fcase(direction_id == 0, "Inbound",
-                                               direction_id == 1, "Outbound")]
+      frequency_filter()[[2]][, direction := fcase(direction_id == 0, "Inbound",
+                                                   direction_id == 1, "Outbound")]
       
-      hchart(mean_frequency[[2]], "column", hcaes(y = headway_mean, x = hour, group = direction)
+      hchart(frequency_filter()[[2]], "column", hcaes(y = headway_mean, x = hour, group = direction)
              # dataLabels = list(enabled = TRUE, format='{point.headway_mean}')
       ) %>%
         hc_xAxis(

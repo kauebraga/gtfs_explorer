@@ -20,3 +20,6 @@ library(shinyBS)
 # library(shinydisconnect)
 # library(sf)
 # library(tippy)
+library(mapdeck)
+
+mapdeck::set_token(fread("../../data/mapbox_key.csv")$key)

@@ -11,7 +11,7 @@ extract_scheduled_stops <- function (gtfs, service_id = NULL, route_id = NULL)
   
   stop_times <- stop_times[, .(trip_id, stop_id, arrival_time, 
                                departure_time, stop_sequence)]
-  trips <- trips[, .(trip_id, route_id, shape_id)]
+  trips <- trips[, .(trip_id, route_id, shape_id, direction_id)]
   stops_linhas_vai <- merge(stop_times, trips, by = "trip_id", 
                             sort = FALSE)
   stops_linhas_vai <- stops_linhas_vai[, .N, by = .(trip_id, 
@@ -23,6 +23,6 @@ extract_scheduled_stops <- function (gtfs, service_id = NULL, route_id = NULL)
                         sort = FALSE)
   stops_linhas <- merge(stops_linhas, stops, by = "stop_id", 
                         sort = FALSE)
-  stops_linhas <- stops_linhas[, .(route_id, shape_id, stop_id, 
+  stops_linhas <- stops_linhas[, .(route_id, shape_id, direction_id, stop_id, 
                                    stop_name, stop_sequence, stop_lon, stop_lat)]
 }
