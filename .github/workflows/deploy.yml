@@ -1,0 +1,30 @@
+name: Deploy shinyapp
+
+on:
+  push:
+    tags:        
+      - v0.**
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN }}
+      
+      - name: Go to shinyserver folder
+        run: cd /srv/shiny-server/
+        
+      - name: Delete previous shinyapp
+        run: rm -r gtfs_explorer/
+        
+      - name: Clone new app
+        run: git clone git@github.com:kauebraga/gtfs_explorer.git
+        
+      - name: Restart shinyserver
+        run: systemctl restart shiny-server
+        
+      
+
