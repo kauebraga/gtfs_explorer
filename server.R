@@ -130,6 +130,10 @@ function(input, output, session) {
       values$gtfs$trips[trips_by_tripid, on = "trip_id",
                         c("ntrips") := list(i.ntrips)]
       
+      # delete trips that dont have frequency
+      values$gtfs$trips <- values$gtfs$trips[!is.na(ntrips)]
+      
+      
     } else {
       
       # print(class(values$gtfs$trips))
@@ -155,6 +159,7 @@ function(input, output, session) {
     
     # bind
     values$trips_day <- rbind(trips_workday, trips_saturday, trips_sunday)
+    print(values$trips_day)
     
     
     output$graph_trips_by_service <- renderHighchart({
@@ -511,11 +516,13 @@ function(input, output, session) {
   trips_filter <- reactive ({
     
     
-    
+    print(input$choose_route)
     # filter service
     trips_filter <- subset(values$gtfs$trips, trip_id %in% service_filter())
+    # print(trips_filter)
     # filter route
     trips_filter <- subset(trips_filter, route_id == input$choose_route)
+    # print(trips_filter)
     
     
   })
@@ -550,7 +557,10 @@ function(input, output, session) {
   speed_filter <- reactive ({
     
     # calculate speeds
+    # print(shapes_filter())
+    # print(trips_filter())
     mean_speed <- get_trip_speed1(gtfs = values$gtfs, shapes = shapes_filter(), trips = trips_filter())
+    # print(mean_speed)
     mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
     
     
