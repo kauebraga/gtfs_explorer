@@ -3,7 +3,7 @@
 
 get_trip_speed1 <- function (gtfs, shapes, trips) 
 {
-  # length_unit <- "km/h"
+  length_unit <- "km/h"
   
   # trips_length <- shapes_filter$dist
   shapes_filter1 <- setDT(copy(shapes))

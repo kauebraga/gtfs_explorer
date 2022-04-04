@@ -2,9 +2,9 @@
 name: Deploy shinyapp
 
 on:
-  push:
-    tags:        
-      - v0.**
+  push
+    # tags:        
+      # - v0.**
 
 jobs:
   deploy:
