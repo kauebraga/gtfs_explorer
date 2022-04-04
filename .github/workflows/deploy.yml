@@ -14,13 +14,12 @@ jobs:
       - name: Deploy app
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
-          username: root
-          key: ${{ secrets.SSH_KEY }}
-          port: 22
+          host: ${{secrets.HOST}}
+          key: ${{secrets.SSH_KEY}}
+          username: ${{secrets.SSH_USERNAME}}
           script: |
             cd /srv/shiny-server/
             rm -r gtfs_explorer/
             git clone git@github.com:kauebraga/gtfs_explorer.git
-            run: systemctl restart shiny-server
+            systemctl restart shiny-server
 
