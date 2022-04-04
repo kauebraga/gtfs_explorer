@@ -12,6 +12,7 @@ jobs:
     steps:
           
       - name: Deploy app
+        if: contains(github.event.head_commit.message, '#deploy')
         uses: appleboy/ssh-action@master
         with:
           host: ${{secrets.HOST}}
