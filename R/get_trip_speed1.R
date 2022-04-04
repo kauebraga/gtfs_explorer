@@ -16,8 +16,8 @@ get_trip_speed1 <- function (gtfs, shapes, trips)
   #   existing_trips <- existing_trips[existing_trips %chin% 
   #                                      stop_times_trips]
   # }
-  duration_unit <- data.table::fifelse(unit == "km/h", "h", 
-                                       "s")
+  # duration_unit <- data.table::fifelse(unit == "km/h", "h", 
+  #                                      "s")
   # trips_duration <- get_trip_duration(gtfs, trip_id, 
   #                                     duration_unit)
   trips_duration <- gtfs$stop_times[trip_id %chin% trips$trip_id]
