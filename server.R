@@ -579,7 +579,10 @@ function(input, output, session) {
         
         # quantidade de paradas
         infoBox1(
-          "Stops",
+          label_with_info(label = "stops",
+                          tooltip_id = "q4_graph",
+                          tooltip_title = "Stops",
+                          tooltip_text = "www/tooltips/popover_stops.html"),
           paste0(stops_n[1,2], " stops"),
           icon = icon("bus", verify_fa = FALSE),
           # icon = HTML('<i class="fa-regular fa-gauge-high"></i>'),
