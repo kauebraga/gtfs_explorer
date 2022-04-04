@@ -11,20 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
           
-      - name: Go to shinyserver folder
-        run: cd /srv/shiny-server/
-        
-      - name: Delete previous shinyapp
-        run: rm -r gtfs_explorer/
-        
-      - name: Clone new app
-        run: git clone git@github.com:kauebraga/gtfs_explorer.git
-        
-      - name: Restart shinyserver
-        run: systemctl restart shiny-server
-        
-    env:
-      SSH_PRIVATE_KEY: ${{secrets.SSH_KEY}}
-      SERVER_IP: ${{secrets.SERVER_IP}}
-      CI: false  
+      - name: Deploy app
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd /srv/shiny-server/
+            rm -r gtfs_explorer/
+            git clone git@github.com:kauebraga/gtfs_explorer.git
+            run: systemctl restart shiny-server
 
