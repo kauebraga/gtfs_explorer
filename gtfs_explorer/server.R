@@ -70,7 +70,9 @@ function(input, output, session) {
     removeModal()
     
     
-    waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), HTML("&nbsp;"), br(), span("Opening GTFS...", style = "color: black"),  br(),  br(), HTML("&nbsp;")),
+    waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), HTML("&nbsp;"), br(), 
+                               span("Opening GTFS...", style = "color: black"),  
+                               br(),  br(), HTML("&nbsp;")),
                 color = "rgba(233, 235, 240, .5)")
     
     
@@ -432,7 +434,8 @@ function(input, output, session) {
       if(count() == 1) {
         
         
-        waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Calculating...", style = "color: black")),
+        waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), HTML("&nbsp;"), br(), 
+                                   span("Calculating measures...", style = "color: black")),
                     color = "rgba(233, 235, 240, .5)")
         
         
