@@ -24,10 +24,11 @@ ui <- fluidPage(
       
       # Input: Slider for the number of bins ----
       radioButtons(inputId = "change",
-                  label = "Number of bins:",
-                  c("on", "off"),
-                  selected = "on"
-                  )
+                   label = "Number of bins:",
+                   c("on", "off"),
+                   selected = "on"
+      ),
+      textOutput("go")
       
     ),
     
@@ -53,6 +54,13 @@ server <- function(input, output) {
       add_path(data = subset(gtfs$shapes, route_type == 2), layer_id = "id2") %>%
       add_path(data = subset(gtfs$shapes, route_type == 3), layer_id = "id3")
     
+    
+  })
+  
+  
+  output$go <- renderText({
+    
+    nrow(gtfs$shapes)
     
   })
   

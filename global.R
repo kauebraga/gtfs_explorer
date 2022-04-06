@@ -24,6 +24,8 @@ library(shinyBS)
 
 # mapdeck::set_token(fread("../../data/mapbox_key.csv")$key)
 
+# install.packages('mapdeck')
+
 # install.packages(c('gtfstools',
 #                    'shiny',
 #                    'leaflet',
