@@ -2,6 +2,7 @@ library(shiny)
 library(shinyWidgets)
 library(gtfstools)
 library(mapdeck)
+library(sf)
 
 
 gtfs <- read_gtfs("data/gtfs_spo_bernardo_2020-11.zip")
