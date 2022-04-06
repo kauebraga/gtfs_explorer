@@ -69,6 +69,27 @@ function(input, output, session) {
     
     removeModal()
     
+    if (is.null(values$gtfs$shapes)) {
+      
+      waiter_hide()
+      a <- div(id = "modal_lang",
+               modalDialog(title = "Without Shapes",
+                           "GTFS doenst have shapes.txt file, and will not show visualizations",
+                           easyClose = TRUE,
+                           size = "m"
+                           # footer = tagList(
+                           #   # modalButton("Cancel"),
+                           #   actionButton("refresh", "Refresh")
+                           #
+                           # )
+               ))
+      
+      showModal(a)
+      
+      # stop("uii")
+      # session$close()
+    }
+    
     
     waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Opening GTFS...", style = "color: black")),
                 color = "rgba(233, 235, 240, .5)")
@@ -91,13 +112,36 @@ function(input, output, session) {
     
     # calculate shapes
     
-    values$gtfs$shapes <- gtfstools::convert_shapes_to_sf(values$gtfs)
-    # bring route to the shapes
-    values$gtfs$shapes <- merge(values$gtfs$shapes, unique(values$gtfs$trips, by = c("route_id", "shape_id")))
-    values$gtfs$shapes <- merge(values$gtfs$shapes, values$gtfs$routes[, .(route_id, route_short_name, route_long_name, route_type)])
-    values$gtfs$shapes <- sf::st_sf(values$gtfs$shapes)
-    # calculate distance
-    values$gtfs$shapes$dist <- as.numeric(sf::st_length(values$gtfs$shapes))
+    if (is.null(values$gtfs$shapes)) {
+      
+      waiter_hide()
+      a <- div(id = "modal_lang",
+               modalDialog(title = "Without Shapes",
+                           "GTFS doenst have shapes.txt file, and will not show visualizations, speeds, and distance data",
+                           easyClose = TRUE,
+                           size = "m"
+                           # footer = tagList(
+                           #   # modalButton("Cancel"),
+                           #   actionButton("refresh", "Refresh")
+                           #
+                           # )
+               ))
+      
+      showModal(a)
+      
+      # stop("uii")
+      # session$close()
+    } else {
+      
+      values$gtfs$shapes <- gtfstools::convert_shapes_to_sf(values$gtfs)
+      # bring route to the shapes
+      values$gtfs$shapes <- merge(values$gtfs$shapes, unique(values$gtfs$trips, by = c("route_id", "shape_id")))
+      values$gtfs$shapes <- merge(values$gtfs$shapes, values$gtfs$routes[, .(route_id, route_short_name, route_long_name, route_type)])
+      values$gtfs$shapes <- sf::st_sf(values$gtfs$shapes)
+      # calculate distance
+      values$gtfs$shapes$dist <- as.numeric(sf::st_length(values$gtfs$shapes))
+      
+    }
     
     type_gtfs <- if (any(grepl(pattern = "frequencies", x = names(values$gtfs)))) {
       
@@ -140,6 +184,9 @@ function(input, output, session) {
       values$gtfs$trips[, ntrips := 1]
       
     }
+    
+    # if doesnt have shape id, fake it!
+    if (is.null(values$gtfs$trips$shape_id)) values$gtfs$trips[, shape_id := NA] else values$gtfs$trips
     
     # identify weekday in services
     services_workday <- values$gtfs$calendar[monday == 1 | tuesday == 1 | wednesday == 1 | thursday == 1 | friday == 1]
@@ -205,55 +252,66 @@ function(input, output, session) {
     
     req(values$gtfs$shapes)
     
-    w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), 
-                            # span("Opening GTFS...", style = "color: black"), br(),
-                            span("Generating map with ", br(), strong(sprintf("%s", nrow(values$gtfs$shapes))), "transit lines...", 
-                                 style = "color: black"),
-                            br(),
-                            if (nrow(values$gtfs$shapes) > 500) span(strong("This may take a while"), style = "color: red") else span("")
-             ))
     
-    
-    
-    map_layers <- function() {
+    if (!is.null(values$gtfs$shapes)) {
       
       
-      # get route types
-      k <- unique(values$gtfs$shapes$route_type)
+      w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), 
+                              # span("Opening GTFS...", style = "color: black"), br(),
+                              span("Generating map with ", br(), strong(sprintf("%s", nrow(values$gtfs$shapes))), "transit lines...", 
+                                   style = "color: black"),
+                              br(),
+                              if (nrow(values$gtfs$shapes) > 500) span(strong("This may take a while"), style = "color: red") else span("")
+      ))
       
-      df <- data.table(sigla = 0:3,
-                       text = c("LRT", "Subway", "Rail", "Bus"))
       
       
-      #base map
+      map_layers <- function() {
+        
+        
+        # get route types
+        k <- unique(values$gtfs$shapes$route_type)
+        
+        df <- data.table(sigla = 0:3,
+                         text = c("LRT", "Subway", "Rail", "Bus"))
+        
+        
+        #base map
+        map <- leaflet() %>%
+          addProviderTiles(providers$CartoDB.Positron)
+        
+        #loop through all groups and add a layer one at a time
+        for (i in seq_along(k)) {
+          map <- map %>% 
+            addGlPolylines(
+              data = subset(values$gtfs$shapes, route_type == k[[i]]), 
+              group = as.character(df[sigla == k[[i]]]$text),
+              color = "black"
+              # layerId = ~route_id
+            )
+          # addPolylines(
+          #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
+          # )
+        }
+        
+        #create layer control
+        map %>% 
+          addLayersControl(
+            overlayGroups = df[sigla %in% k]$text,
+            options = layersControlOptions(collapsed = FALSE))
+        # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
+        
+      }
+      
+      #plot the map
+      map_layers()
+      
+    } else {
+      
       map <- leaflet() %>%
         addProviderTiles(providers$CartoDB.Positron)
       
-      #loop through all groups and add a layer one at a time
-      for (i in seq_along(k)) {
-        map <- map %>% 
-          addGlPolylines(
-            data = subset(values$gtfs$shapes, route_type == k[[i]]), 
-            group = as.character(df[sigla == k[[i]]]$text),
-            color = "black"
-            # layerId = ~route_id
-          )
-        # addPolylines(
-        #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
-        # )
-      }
-      
-      #create layer control
-      map %>% 
-        addLayersControl(
-          overlayGroups = df[sigla %in% k]$text,
-          options = layersControlOptions(collapsed = FALSE))
-      # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
-      
     }
-    
-    #plot the map
-    map_layers()
     
   })
   
@@ -408,7 +466,7 @@ function(input, output, session) {
           
           
           values$gtfs$stop_times <- gtfstools::read_gtfs(input$gtfs$datapath,
-                                              files = "stop_times")$stop_times
+                                                         files = "stop_times")$stop_times
           
         } else {
           
@@ -418,6 +476,7 @@ function(input, output, session) {
           values$gtfs$stop_times <- values$gtfs$stop_times$stop_times
           
         }
+        
         
         # bring routes
         values$gtfs$stop_times <- merge(values$gtfs$stop_times, values$gtfs$trips[, .(service_id, trip_id, route_id, shape_id, direction_id)],
@@ -514,7 +573,16 @@ function(input, output, session) {
   shapes_filter <- reactive ({
     
     # filter shapes
-    shapes_filter <- subset(values$gtfs$shapes, route_id == input$choose_route)
+    if (is.null(values$gtfs$shapes)) {
+      
+      shapes_filter <- NULL
+      
+    } else {
+      
+      
+      shapes_filter <- subset(values$gtfs$shapes, route_id == input$choose_route)
+      
+    }
     # class(shapes_filter)
     # shapes_filter$direction_id <- rleid(shapes_filter$shape_id)
     
@@ -574,20 +642,33 @@ function(input, output, session) {
   
   distance_filter <- reactive ({
     
-    # calculate distance
-    dist_mean <- mean(shapes_filter()$dist)
+    
+    if (is.null(values$gtfs$shapes)) {
+      
+      NULL 
+      
+    } else {
+      # calculate distance
+      dist_mean <- mean(shapes_filter()$dist)
+    }
     
     
   })
   
   speed_filter <- reactive ({
     
-    # calculate speeds
-    # print(shapes_filter())
-    # print(trips_filter())
-    mean_speed <- get_trip_speed1(gtfs = values$gtfs, shapes = shapes_filter(), trips = trips_filter())
-    # print(mean_speed)
-    mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
+    if (is.null(values$gtfs$shapes)) {
+      
+      NULL
+      
+    } else {
+      # calculate speeds
+      # print(shapes_filter())
+      # print(trips_filter())
+      mean_speed <- get_trip_speed1(gtfs = values$gtfs, shapes = shapes_filter(), trips = trips_filter())
+      # print(mean_speed)
+      mean_speed <- mean(mean_speed$speed, na.rm = TRUE)
+    }
     
     
   })
@@ -613,15 +694,31 @@ function(input, output, session) {
   # first, extract gtfs bound
   gtfs_bound <- reactive({
     
-    sf::st_bbox(values$gtfs$shapes)
+    if (is.null(values$gtfs$shapes)) {
+      
+      NULL
+      
+    } else {
+      
+      sf::st_bbox(values$gtfs$shapes)
+      
+    }
   })
   
   output$map_routes <- renderLeaflet({
     
+    if (is.null(values$gtfs$shapes)) {
+      
+      leaflet() %>%
+        addProviderTiles(providers$CartoDB.Positron) }
+    
+    else {
     
     leaflet() %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       fitBounds(gtfs_bound()[[1]], gtfs_bound()[[2]], gtfs_bound()[[3]], gtfs_bound()[[4]])
+      
+    }
     
   })
   
@@ -694,7 +791,7 @@ function(input, output, session) {
         # speed
         infoBox1(
           "Speed",
-          paste0(round(speed_filter()), " km/h"),
+          if (!is.null(speed_filter())) paste0(round(speed_filter()), " km/h") else "NA km/h",
           # icon = icon("gauge-high", verify_fa = FALSE),
           icon = icon("gauge", verify_fa = FALSE),
           # icon = fontawesome::fa("clock"),
