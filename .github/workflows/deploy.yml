@@ -19,8 +19,9 @@ jobs:
           key: ${{secrets.SSH_KEY}}
           username: ${{secrets.SSH_USERNAME}}
           script: |
-            cd /srv/shiny-server/
             rm -r gtfs_explorer/
+            rm -r /srv/shiny-server/gtfs_explorer
             git clone git@github.com:kauebraga/gtfs_explorer.git
+            cp -r gtfs_explorer/gtfs_explorer cd /srv/shiny-server/
             systemctl restart shiny-server
 

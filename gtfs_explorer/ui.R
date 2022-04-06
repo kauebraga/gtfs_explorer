@@ -23,7 +23,7 @@ shinyUI(
                    # autoWaiter(),
                    # waiterOnBusy(),
                    # waiterPreloader(),
-                   waiter_hide_on_render("map_city"),
+                   waiter_hide_on_render("graph_trips_by_service"),
                    title = "Map", 
                    value = "tab_general",
                    fluidRow(

@@ -37,3 +37,6 @@ RUN install2.r --error --skipinstalled \
 COPY ./app/. /srv/shiny-server/
 # USER shiny
 EXPOSE 3838
+
+
+# upload: https://www.section.io/engineering-education/docker-push-for-publishing-images-to-docker-hub/

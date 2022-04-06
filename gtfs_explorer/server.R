@@ -162,129 +162,141 @@ function(input, output, session) {
     print(values$trips_day)
     
     
-    output$graph_trips_by_service <- renderHighchart({
-      
-      req(values$trips_day)
-      
-      hchart(values$trips_day, "bar", hcaes(y = trips, x = type),
-             name = "Frequência") %>%
-        hc_xAxis(
-          title = list(text = "")
-          #   labels = list(useHTML = TRUE,
-          #                 style = list(width = '100px')))%>%
-        ) %>%
-        hc_yAxis(labels = list(enabled = TRUE),
-                 title = list(text = ""),
-                 tickLength = 0,
-                 gridLineWidth = 0) %>%
-        # hc_title(
-        #   text = "Trips by weekday"
-        # ) %>%
-        hc_chart(style = list(fontFamily = "Roboto Condensed")) %>%
-        hc_plotOptions(bar = list(borderRadius = 1,
-                                  borderColor = "#000000",
-                                  color = "#F4F4F4",
-                                  tooltip = list(
-                                    pointFormat = sprintf("%s: {point.y}", "Total"),
-                                    valueDecimals = 0),
-                                  # stacking = FALSE,
-                                  allowPointSelect = TRUE
-                                  
-                                  
-        ))
-    })
     
-    w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Generating map...", style = "color: black")))
+  })
+  
+  output$graph_trips_by_service <- renderHighchart({
     
-    output$map_city <- renderLeaflet({
+    req(values$trips_day)
+    
+    hchart(values$trips_day, "bar", hcaes(y = trips, x = type),
+           name = "Frequência") %>%
+      hc_xAxis(
+        title = list(text = "")
+        #   labels = list(useHTML = TRUE,
+        #                 style = list(width = '100px')))%>%
+      ) %>%
+      hc_yAxis(labels = list(enabled = TRUE),
+               title = list(text = ""),
+               tickLength = 0,
+               gridLineWidth = 0) %>%
+      # hc_title(
+      #   text = "Trips by weekday"
+      # ) %>%
+      hc_chart(style = list(fontFamily = "Roboto Condensed")) %>%
+      hc_plotOptions(bar = list(borderRadius = 1,
+                                borderColor = "#000000",
+                                color = "#F4F4F4",
+                                tooltip = list(
+                                  pointFormat = sprintf("%s: {point.y}", "Total"),
+                                  valueDecimals = 0),
+                                # stacking = FALSE,
+                                allowPointSelect = TRUE
+                                
+                                
+      ))
+  })
+  
+  
+  
+  
+  
+  output$map_city <- renderLeaflet({
+    
+    req(values$gtfs$shapes)
+    
+    w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), 
+                            # span("Opening GTFS...", style = "color: black"), br(),
+                            span("Generating map with ", br(), strong(sprintf("%s", nrow(values$gtfs$shapes))), "transit lines...", 
+                                 style = "color: black"),
+                            br(),
+                            if (nrow(values$gtfs$shapes) > 500) span(strong("This may take a while"), style = "color: red") else span("")
+             ))
+    
+    
+    
+    map_layers <- function() {
       
-      req(values$gtfs$shapes)
+      
+      # get route types
+      k <- unique(values$gtfs$shapes$route_type)
+      
+      df <- data.table(sigla = 0:3,
+                       text = c("LRT", "Subway", "Rail", "Bus"))
       
       
-      map_layers <- function() {
-        
-        
-        # get route types
-        k <- unique(values$gtfs$shapes$route_type)
-        
-        df <- data.table(sigla = 0:3,
-                         text = c("LRT", "Subway", "Rail", "Bus"))
-        
-        
-        #base map
-        map <- leaflet() %>%
-          addProviderTiles(providers$CartoDB.Positron)
-        
-        #loop through all groups and add a layer one at a time
-        for (i in seq_along(k)) {
-          map <- map %>% 
-            addGlPolylines(
-              data = subset(values$gtfs$shapes, route_type == k[[i]]), 
-              group = as.character(df[sigla == k[[i]]]$text),
-              color = "black"
-              # layerId = ~route_id
-            )
-          # addPolylines(
-          #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
-          # )
-        }
-        
-        #create layer control
-        map %>% 
-          addLayersControl(
-            overlayGroups = df[sigla %in% k]$text,
-            options = layersControlOptions(collapsed = FALSE))
-        # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
-        
+      #base map
+      map <- leaflet() %>%
+        addProviderTiles(providers$CartoDB.Positron)
+      
+      #loop through all groups and add a layer one at a time
+      for (i in seq_along(k)) {
+        map <- map %>% 
+          addGlPolylines(
+            data = subset(values$gtfs$shapes, route_type == k[[i]]), 
+            group = as.character(df[sigla == k[[i]]]$text),
+            color = "black"
+            # layerId = ~route_id
+          )
+        # addPolylines(
+        #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
+        # )
       }
       
-      #plot the map
-      map_layers()
+      #create layer control
+      map %>% 
+        addLayersControl(
+          overlayGroups = df[sigla %in% k]$text,
+          options = layersControlOptions(collapsed = FALSE))
+      # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
       
-    })
+    }
     
-    routes_by_type <- reactive({
-      
-      req(values$gtfs$routes)
-      
-      # routes by type
-      route_by_type <- values$gtfs$routes[, .N, by = route_type]
-      # bring names
-      route_by_type <- merge(route_by_type, data.table(route_type = 0:3,
-                                                       text = c("LRT", "Subway", "Rail", "Bus")),
-                             sort = FALSE,
-                             by = "route_type")
-      
-      setorder(route_by_type, route_type)
-      
-      return(route_by_type)
-      
-      
-    })  
-    
-    output$ibox <- renderUI({
-      
-      info_routes <- function(route) {
-        infoBox1(
-          title = routes_by_type()[route_type == route]$text,
-          value = paste0(routes_by_type()[route_type == route]$N, " routes"),
-          icon = switch(as.character(route), 
-                        "0" = icon("user-friends"),
-                        "1" = icon("train-subway"),
-                        "2" = icon("train"),
-                        "3" = icon("bus")), 
-          color = "black"
-        )
-      }
-      
-      # apply fun
-      lapply(sort(routes_by_type()$route_type), info_routes)
-      
-    })
+    #plot the map
+    map_layers()
     
   })
   
   
+  
+  routes_by_type <- reactive({
+    
+    req(values$gtfs$routes)
+    
+    # routes by type
+    route_by_type <- values$gtfs$routes[, .N, by = route_type]
+    # bring names
+    route_by_type <- merge(route_by_type, data.table(route_type = 0:3,
+                                                     text = c("LRT", "Subway", "Rail", "Bus")),
+                           sort = FALSE,
+                           by = "route_type")
+    
+    setorder(route_by_type, route_type)
+    
+    return(route_by_type)
+    
+    
+  })  
+  
+  output$ibox <- renderUI({
+    
+    info_routes <- function(route) {
+      infoBox1(
+        title = routes_by_type()[route_type == route]$text,
+        value = paste0(routes_by_type()[route_type == route]$N, " routes"),
+        icon = switch(as.character(route), 
+                      "0" = icon("user-friends"),
+                      "1" = icon("train-subway"),
+                      "2" = icon("train"),
+                      "3" = icon("bus")), 
+        color = "black"
+      )
+    }
+    
+    # apply fun
+    lapply(sort(routes_by_type()$route_type), info_routes)
+    
+  })
   
   
   
