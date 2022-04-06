@@ -261,6 +261,7 @@ function(input, output, session) {
   
   routes_by_type <- reactive({
     
+    # only run if routes are available
     req(values$gtfs$routes)
     
     # routes by type
