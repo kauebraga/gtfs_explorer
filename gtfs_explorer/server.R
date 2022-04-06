@@ -9,7 +9,9 @@ function(input, output, session) {
   # 1) modal to upload gtfs at startup ----------------------------------------------------------
   query_modal <- div(id = "modal_lang", 
                      modalDialog(
-                       title = HTML("Select a GTFS file: "),
+                       title = tagList(
+                         span(h3("Welcome to the ", strong("GTFS Explorer")), br(), p("Quickly explore and see relevant indicators from a GTFS feed"),
+                         style = "text-align:center;")),
                        renderUI({
                          div(style = "width: 50%;margin: 0 auto;", 
                              fileInput(
