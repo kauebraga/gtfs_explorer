@@ -100,7 +100,7 @@ function(input, output, session) {
       waiter_hide()
       a <- div(id = "modal_lang",
                modalDialog(title = "Without Shapes",
-                           "GTFS doenst have shapes.txt file, and will not show visualizations, speeds, and distance data",
+                           "GTFS doenst have", strong("shapes.txt"), "file, and will not show visualizations, speeds, and distance data",
                            easyClose = TRUE,
                            size = "m"
                            # footer = tagList(
