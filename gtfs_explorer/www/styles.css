@@ -3,6 +3,33 @@
 @import url("https://use.fontawesome.com/releases/v6.0.0/css/all.css");
 
 
+
+
+@keyframes fadeIn {
+  0% {opacity:0;}
+  100% {opacity:1;}
+}
+
+@-moz-keyframes fadeIn {
+  0% {opacity:0;}
+  100% {opacity:1;}
+}
+
+@-webkit-keyframes fadeIn {
+  0% {opacity:0;}
+  100% {opacity:1;}
+}
+
+@-o-keyframes fadeIn {
+  0% {opacity:0;}
+  100% {opacity:1;}
+}
+
+@-ms-keyframes fadeIn {
+  0% {opacity:0;}
+  100% {opacity:1;}
+}
+
 /* Change info (popup) button design */
 .btn-xs {
   box-shadow: 1px 1px 1px rgb(0 0 0 / 10%);

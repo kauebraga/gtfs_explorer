@@ -69,29 +69,8 @@ function(input, output, session) {
     
     removeModal()
     
-    if (is.null(values$gtfs$shapes)) {
-      
-      waiter_hide()
-      a <- div(id = "modal_lang",
-               modalDialog(title = "Without Shapes",
-                           "GTFS doenst have shapes.txt file, and will not show visualizations",
-                           easyClose = TRUE,
-                           size = "m"
-                           # footer = tagList(
-                           #   # modalButton("Cancel"),
-                           #   actionButton("refresh", "Refresh")
-                           #
-                           # )
-               ))
-      
-      showModal(a)
-      
-      # stop("uii")
-      # session$close()
-    }
     
-    
-    waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), span("Opening GTFS...", style = "color: black")),
+    waiter_show(html = tagList(spin_loaders(id = 2, color = "black"), br(), HTML("&nbsp;"), br(), span("Opening GTFS...", style = "color: black"),  br(),  br(), HTML("&nbsp;")),
                 color = "rgba(233, 235, 240, .5)")
     
     
@@ -255,13 +234,12 @@ function(input, output, session) {
     
     if (!is.null(values$gtfs$shapes)) {
       
-      
-      w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), 
+      w$update(html = tagList(spin_loaders(id = 2, color = "black"), br(), HTML("&nbsp;"), br(),
                               # span("Opening GTFS...", style = "color: black"), br(),
                               span("Generating map with ", br(), strong(sprintf("%s", nrow(values$gtfs$shapes))), "transit lines...", 
-                                   style = "color: black"),
+                                   style = "color: black; animation: fadeIn 1s; -webkit-animation: fadeIn 1s; -moz-animation: fadeIn 1s; -o-animation: fadeIn 1s;-ms-animation: fadeIn 1s;"),
                               br(),
-                              if (nrow(values$gtfs$shapes) > 500) span(strong("This may take a while"), style = "color: red") else span("")
+                              if (nrow(values$gtfs$shapes) > 500) span(strong("This may take a while"), style = "color: red; animation: fadeIn 1s; -webkit-animation: fadeIn 1s; -moz-animation: fadeIn 1s; -o-animation: fadeIn 1s;-ms-animation: fadeIn 1s;") else span("")
       ))
       
       

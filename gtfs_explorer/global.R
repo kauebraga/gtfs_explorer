@@ -1,5 +1,5 @@
 # increase max upload size to 30mb
-options(shiny.maxRequestSize=30*1024^2)
+options(shiny.maxRequestSize=50*1024^2)
 
 lapply(dir("fun", full.names = TRUE), source)
 lapply(dir("R", full.names = TRUE), source)
