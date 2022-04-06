@@ -127,10 +127,15 @@ body {
   font-size: 18px;
 }
 
-h1 {
-  font: bold 20px 'Roboto Condensed', sans-serif;
+h1. h2, h3 {
+  font: 18px 'Roboto Condensed', sans-serif;
 }
 
+.navbar {
+  font: 20px 'Roboto', sans-serif !important;
+  font-weight: 700;
+  border-right: transparent !important;
+}
 
 #controls_graphs1 {
   background-color: white;
