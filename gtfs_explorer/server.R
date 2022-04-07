@@ -11,13 +11,14 @@ function(input, output, session) {
                      modalDialog(
                        title = tagList(
                          span(h3("Welcome to the ", strong("GTFS Explorer")), br(), p("Quickly explore and see relevant indicators from a GTFS feed"),
-                         style = "text-align:center;")),
+                              style = "text-align:center;")),
                        renderUI({
                          div(style = "width: 50%;margin: 0 auto;", 
                              fileInput(
                                inputId = "gtfs", 
-                               label = "Choose GTFS File",
+                               label = NULL,
                                multiple = TRUE,
+                               buttonLabel = "Upload GTFS files...",
                                accept = c(".zip"))
                          )
                        }),
@@ -696,10 +697,10 @@ function(input, output, session) {
         addProviderTiles(providers$CartoDB.Positron) }
     
     else {
-    
-    leaflet() %>%
-      addProviderTiles(providers$CartoDB.Positron) %>%
-      fitBounds(gtfs_bound()[[1]], gtfs_bound()[[2]], gtfs_bound()[[3]], gtfs_bound()[[4]])
+      
+      leaflet() %>%
+        addProviderTiles(providers$CartoDB.Positron) %>%
+        fitBounds(gtfs_bound()[[1]], gtfs_bound()[[2]], gtfs_bound()[[3]], gtfs_bound()[[4]])
       
     }
     

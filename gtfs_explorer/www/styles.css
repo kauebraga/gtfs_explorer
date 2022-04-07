@@ -127,8 +127,18 @@ body {
   font-size: 18px;
 }
 
-h1, h2, h3 {
+
+p {
   font: 18px 'Roboto Condensed', sans-serif;
+}
+
+
+h1 {
+  font: 26px 'Roboto Condensed', sans-serif;
+}
+
+h2, h3 {
+  font: 22px 'Roboto Condensed', sans-serif;
 }
 
 .navbar {

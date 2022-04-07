@@ -1,0 +1,11 @@
+.navbar-brand {
+  padding-right: 40px;
+  font-size: 22px;
+  
+  
+}
+
+
+.navbar-default .navbar-nav > .active > a {
+  border-bottom: 2px solid #4285f4;
+}

@@ -5,10 +5,11 @@ shinyUI(
   div(class = "navbar-default",
       # Load Css
       tags$head(includeCSS("www/styles.css")),
+      tags$head(includeCSS("www/upload_button.css")),
+      tags$head(includeCSS("www/navbar.css")),
       tags$style(type = "text/css", "#map_city, #map_routes {height: calc(100vh - 120px) !important;}"),
       useShinydashboard(),
       # shinyjs::useShinyjs(),
-      # tags$head(tags$script(src = "teste.js")),
       # use_bs_popover(), # you need to call this function somewhere in your ui
       # disconnectMessage(),
       # Use loading page
