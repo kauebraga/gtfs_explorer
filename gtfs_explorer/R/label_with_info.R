@@ -1,6 +1,6 @@
 label_with_info <- function(label, tooltip_id, tooltip_title, tooltip_text) {
   
-  x <- HTML(sprintf("<p>%s <button id=\"%s\" type=\"button\" class=\"btn btn-light btn-xs\"><i class=\"fa fa-info\"></i></button></p>", 
+  x <- HTML(sprintf("<span class = info-box-text>%s <button id=\"%s\" type=\"button\" class=\"btn btn-light btn-xs\"><i class=\"fa fa-info\"></i></button></span>", 
                     label, tooltip_id))
   
   y <- bsPopover(id = tooltip_id,
