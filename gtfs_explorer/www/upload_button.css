@@ -51,3 +51,9 @@
     border: 3px solid transparent;
     border-radius: 10px !important;
 }
+
+
+
+.progress {
+  margin-top: 15px;
+}
