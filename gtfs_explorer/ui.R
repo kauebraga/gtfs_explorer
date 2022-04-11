@@ -1,7 +1,7 @@
 
 
 fluidPage(
-  # this script will add elements to the right side of the topbar (links etc)
+  # this script will add elements to the right side of the topbar (links etc) ok
   tags$head(includeScript("www/navbar_element.js")),
   # Load Css
   tags$head(includeCSS("www/styles.css")),
