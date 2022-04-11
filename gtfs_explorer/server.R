@@ -117,10 +117,12 @@ function(input, output, session) {
       # session$close()
     } else {
       
-      values$gtfs$shapes <- gtfstools::convert_shapes_to_sf(values$gtfs)
+      values$gtfs$shapes <- setDT(gtfstools::convert_shapes_to_sf(values$gtfs))
       # bring route to the shapes
-      values$gtfs$shapes <- merge(values$gtfs$shapes, unique(values$gtfs$trips, by = c("route_id", "shape_id")))
-      values$gtfs$shapes <- merge(values$gtfs$shapes, values$gtfs$routes[, .(route_id, route_short_name, route_long_name, route_type)])
+      values$gtfs$shapes <- merge(values$gtfs$shapes, unique(values$gtfs$trips, by = c("route_id", "shape_id")), sort = FALSE)
+      values$gtfs$shapes <- merge(values$gtfs$shapes, values$gtfs$routes[, .(route_id, route_short_name, route_long_name, route_type)], sort = FALSE)
+      # assign direction_id if its not available
+      if (is.na(unique(values$gtfs$shapes$direction_id))) values$gtfs$shapes[, direction_id := (1:.N)-1, by = route_id] else values$gtfs$shapes
       values$gtfs$shapes <- sf::st_sf(values$gtfs$shapes)
       # calculate distance
       values$gtfs$shapes$dist <- as.numeric(sf::st_length(values$gtfs$shapes))
@@ -720,6 +722,17 @@ function(input, output, session) {
                   color = "rgba(233, 235, 240, .5)")
     }
     
+    # make group name
+    shapes_filter <- copy(shapes_filter())
+    setDT(shapes_filter)
+    shapes_filter[, N := .N, by = direction_id]
+    setorder(shapes_filter, direction_id, shape_id)
+    shapes_filter[, group_name := ifelse(direction_id == 0, "Inbound", "Outbound")]
+    shapes_filter[, group_indice := rleid(shape_id), by = direction_id]
+    shapes_filter[, group_name := ifelse(group_name %in% c("Inbound", "Outbound") & N == 1, group_name, paste0(group_name, " ", group_indice))]
+    # stops
+    setorder(stops_filter(), direction_id, stop_sequence, shape_id)
+    
     
     icons <- awesomeIcons(
       icon = "bus",
@@ -741,23 +754,39 @@ function(input, output, session) {
                   options = list(duration = 1.5))
     
     
-    map_go %>%
-      addAwesomeMarkers(data = stops_filter()[direction_id == 0], 
-                        lng = ~stop_lon, lat = ~stop_lat, 
-                        group = "Inbound",
-                        label = ~htmlEscape(stop_name),
-                        icon = icons) %>%
-      addAwesomeMarkers(data = stops_filter()[direction_id == 1], 
-                        lng = ~stop_lon, lat = ~stop_lat, 
-                        group = "Outbound",
-                        label = ~htmlEscape(stop_name), 
-                        icon = icons) %>%
-      addPolylines(data = subset(shapes_filter(), direction_id == 0), group = "Inbound") %>%
-      addPolylines(data = subset(shapes_filter(), direction_id == 1), group = "Outbound") %>%
-      addLayersControl(
-        overlayGroups = c("Inbound", "Outbound"),
-        options = layersControlOptions(collapsed = FALSE)) %>%
-      addMiniMap()
+    map_route <- function() {
+      
+      #loop through all groups and add a layer one at a time
+      for (i in seq_along(shapes_filter$shape_id)) {
+        map_go <- map_go %>%
+          addPolylines(
+            data = subset(sf::st_sf(shapes_filter), shape_id == shapes_filter[i]$shape_id), 
+            group = shapes_filter[i]$group_name,
+            color = "black"
+            # layerId = ~route_id
+          ) %>%
+          addAwesomeMarkers(data = stops_filter()[shape_id == shapes_filter[i]$shape_id],
+                            lng = ~stop_lon, lat = ~stop_lat,
+                            group = shapes_filter[i]$group_name,
+                            label = ~htmlEscape(stop_name),
+                            icon = icons)
+        # addPolylines(
+        #   data = subset(shapes, route_type == k[[i]]), group = as.character(df[sigla == k[[i]]]$text)
+        # )
+      }
+      
+      #create layer control
+      map_go %>% 
+        addLayersControl(
+          overlayGroups = shapes_filter$group_name,
+          options = layersControlOptions(collapsed = FALSE)) %>%
+        addMiniMap()
+      # hideGroup(as.character(c(2:k))) #hide all groups except the 1st one
+      
+    }
+    
+    #plot the map
+    map_route()
     
     
   })
